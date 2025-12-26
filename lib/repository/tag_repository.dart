@@ -14,4 +14,6 @@ class TagRepository {
   Future<void> delete(int id) => db.tagDao.delete(id);
 
   Future<void> ensurePresetTags(List<String> names) => db.tagDao.ensurePresetTags(names);
+
+  Future<Tag?> findByName(String name) => db.tagDao.findByName(name);
 }

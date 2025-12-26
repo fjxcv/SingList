@@ -160,6 +160,29 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
           ..where((tbl) => tbl.title.like(like) | tbl.artist.like(like)))
         .get();
   }
+
+  Future<List<Song>> fetchAllSortedByNorm() {
+    return (select(songs)
+          ..orderBy([
+            (tbl) => OrderingTerm.asc(tbl.titleNorm),
+            (tbl) => OrderingTerm.asc(tbl.artistNorm),
+          ]))
+        .get();
+  }
+
+  Future<List<Song>> fetchSongsByTagSorted(int tagId) {
+    final query = select(songs).join([
+      innerJoin(songTags, songTags.songId.equalsExp(songs.id)),
+    ]);
+    query.where(songTags.tagId.equals(tagId));
+    query.orderBy([
+      OrderingTerm.asc(songs.titleNorm),
+      OrderingTerm.asc(songs.artistNorm),
+    ]);
+    return query.watch().first.then(
+          (rows) => rows.map((row) => row.readTable(songs)).toList(),
+        );
+  }
 }
 
 @DriftAccessor(tables: [Tags])
@@ -168,6 +191,10 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
 
   Stream<List<Tag>> watchAll() {
     return (select(tags)..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
+  }
+
+  Future<Tag?> findByName(String name) {
+    return (select(tags)..where((tbl) => tbl.name.equals(name))).getSingleOrNull();
   }
 
   Future<int> create(String name) {
@@ -257,6 +284,10 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
     });
   }
 
+  Future<Playlist?> findById(int id) {
+    return (select(playlists)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
+
   Stream<List<Song>> songsInPlaylist(int playlistId) {
     final query = select(songs).join([
       innerJoin(playlistSongs, playlistSongs.songId.equalsExp(songs.id)),
@@ -283,6 +314,20 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
         );
       }
     });
+  }
+
+  Future<List<Song>> songsInPlaylistSortedByNorm(int playlistId) {
+    final query = select(songs).join([
+      innerJoin(playlistSongs, playlistSongs.songId.equalsExp(songs.id)),
+    ]);
+    query.where(playlistSongs.playlistId.equals(playlistId));
+    query.orderBy([
+      OrderingTerm.asc(songs.titleNorm),
+      OrderingTerm.asc(songs.artistNorm),
+    ]);
+    return query.watch().first.then(
+          (rows) => rows.map((row) => row.readTable(songs)).toList(),
+        );
   }
 }
 

@@ -25,6 +25,14 @@ class PlaylistRepository {
     return db.playlistDao.addSongsToPlaylist(playlistId, songIds);
   }
 
+  Future<List<Song>> songsInPlaylistSortedByNorm(int playlistId) {
+    return db.playlistDao.songsInPlaylistSortedByNorm(playlistId);
+  }
+
+  Future<Playlist?> findById(int id) {
+    return db.playlistDao.findById(id);
+  }
+
   Stream<List<QueueItemWithSong>> queueItems(int playlistId) {
     return db.queueDao.queueItemsWithSongs(playlistId);
   }

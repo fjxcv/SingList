@@ -36,4 +36,12 @@ class SongRepository {
   Future<void> removeTagsFromSongs({required List<int> songIds, required List<int> tagIds}) {
     return db.songTagDao.removeTagsFromSongs(songIds: songIds, tagIds: tagIds);
   }
+
+  Future<List<Song>> fetchAllSortedByNorm() {
+    return db.songDao.fetchAllSortedByNorm();
+  }
+
+  Future<List<Song>> fetchSongsByTagSorted(int tagId) {
+    return db.songDao.fetchSongsByTagSorted(tagId);
+  }
 }
