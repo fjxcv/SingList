@@ -539,12 +539,12 @@ class $PlaylistsTable extends Playlists with TableInfo<$PlaylistsTable, Playlist
   }
 }
 
-class PlaylistEntry extends DataClass implements Insertable<PlaylistEntry> {
+class PlaylistSong extends DataClass implements Insertable<PlaylistSong> {
   final int id;
   final int playlistId;
   final int songId;
   final int position;
-  const PlaylistEntry({required this.id, required this.playlistId, required this.songId, required this.position});
+  const PlaylistSong({required this.id, required this.playlistId, required this.songId, required this.position});
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) => {
@@ -554,7 +554,7 @@ class PlaylistEntry extends DataClass implements Insertable<PlaylistEntry> {
         'position': Variable<int>(position),
       };
 
-  PlaylistEntriesCompanion toCompanion(bool nullToAbsent) => PlaylistEntriesCompanion(
+  PlaylistSongsCompanion toCompanion(bool nullToAbsent) => PlaylistSongsCompanion(
         id: Value(id),
         playlistId: Value(playlistId),
         songId: Value(songId),
@@ -562,18 +562,18 @@ class PlaylistEntry extends DataClass implements Insertable<PlaylistEntry> {
       );
 }
 
-class PlaylistEntriesCompanion extends UpdateCompanion<PlaylistEntry> {
+class PlaylistSongsCompanion extends UpdateCompanion<PlaylistSong> {
   final Value<int> id;
   final Value<int> playlistId;
   final Value<int> songId;
   final Value<int> position;
-  const PlaylistEntriesCompanion({
+  const PlaylistSongsCompanion({
     this.id = const Value.absent(),
     this.playlistId = const Value.absent(),
     this.songId = const Value.absent(),
     this.position = const Value.absent(),
   });
-  PlaylistEntriesCompanion.insert({
+  PlaylistSongsCompanion.insert({
     this.id = const Value.absent(),
     required int playlistId,
     required int songId,
@@ -582,11 +582,11 @@ class PlaylistEntriesCompanion extends UpdateCompanion<PlaylistEntry> {
         songId = Value(songId);
 }
 
-class $PlaylistEntriesTable extends PlaylistEntries with TableInfo<$PlaylistEntriesTable, PlaylistEntry> {
+class $PlaylistSongsTable extends PlaylistSongs with TableInfo<$PlaylistSongsTable, PlaylistSong> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $PlaylistEntriesTable(this.attachedDatabase, [this._alias]);
+  $PlaylistSongsTable(this.attachedDatabase, [this._alias]);
 
   static const VerificationMeta _idMeta = VerificationMeta('id');
   static const VerificationMeta _playlistIdMeta = VerificationMeta('playlistId');
@@ -612,12 +612,12 @@ class $PlaylistEntriesTable extends PlaylistEntries with TableInfo<$PlaylistEntr
   @override
   List<GeneratedColumn> get $columns => [id, playlistId, songId, position];
   @override
-  String get aliasedName => _alias ?? 'playlist_entries';
+  String get aliasedName => _alias ?? 'playlist_songs';
   @override
-  String get actualTableName => 'playlist_entries';
+  String get actualTableName => 'playlist_songs';
 
   @override
-  VerificationContext validateIntegrity(Insertable<PlaylistEntry> instance, {bool isInserting = false}) {
+  VerificationContext validateIntegrity(Insertable<PlaylistSong> instance, {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -643,9 +643,9 @@ class $PlaylistEntriesTable extends PlaylistEntries with TableInfo<$PlaylistEntr
   Set<GeneratedColumn> get $primaryKey => {id};
 
   @override
-  PlaylistEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  PlaylistSong map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return PlaylistEntry(
+    return PlaylistSong(
       id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       playlistId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}playlist_id'])!,
       songId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}song_id'])!,
@@ -775,10 +775,35 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TagsTable tags = $TagsTable(this);
   late final $SongTagsTable songTags = $SongTagsTable(this);
   late final $PlaylistsTable playlists = $PlaylistsTable(this);
-  late final $PlaylistEntriesTable playlistEntries = $PlaylistEntriesTable(this);
+  late final $PlaylistSongsTable playlistSongs = $PlaylistSongsTable(this);
   late final $QueueItemsTable queueItems = $QueueItemsTable(this);
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
-      [songs, tags, songTags, playlists, playlistEntries, queueItems];
+      [songs, tags, songTags, playlists, playlistSongs, queueItems];
+}
+
+mixin _$SongDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SongsTable get songs => attachedDatabase.songs;
+}
+
+mixin _$TagDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TagsTable get tags => attachedDatabase.tags;
+}
+
+mixin _$SongTagDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SongTagsTable get songTags => attachedDatabase.songTags;
+  $SongsTable get songs => attachedDatabase.songs;
+  $TagsTable get tags => attachedDatabase.tags;
+}
+
+mixin _$PlaylistDaoMixin on DatabaseAccessor<AppDatabase> {
+  $PlaylistsTable get playlists => attachedDatabase.playlists;
+  $PlaylistSongsTable get playlistSongs => attachedDatabase.playlistSongs;
+  $SongsTable get songs => attachedDatabase.songs;
+}
+
+mixin _$QueueDaoMixin on DatabaseAccessor<AppDatabase> {
+  $QueueItemsTable get queueItems => attachedDatabase.queueItems;
+  $SongsTable get songs => attachedDatabase.songs;
 }
