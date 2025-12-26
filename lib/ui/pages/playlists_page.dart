@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/db/app_database.dart';
 import '../../repository/playlist_repository.dart';
 import '../../state/providers.dart';
+import '../../service/kqueue_text_service.dart';
 import 'queue_page.dart';
 import 'simple_playlist_page.dart';
 
@@ -15,10 +16,16 @@ class PlaylistsPage extends ConsumerWidget {
     final normal = ref.watch(normalPlaylistsProvider);
     final queues = ref.watch(queuePlaylistsProvider);
     final repo = ref.watch(playlistRepoProvider);
+    final textService = ref.watch(kqueueTextServiceProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('歌单 / 队列'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.content_paste),
+            tooltip: '粘贴导入 KQueue',
+            onPressed: () => _importDialog(context, textService),
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => _createDialog(context, repo),
@@ -73,6 +80,89 @@ class PlaylistsPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _importDialog(
+    BuildContext context,
+    KQueueTextService textService,
+  ) async {
+    final controller = TextEditingController();
+    String? error;
+    var isLoading = false;
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('粘贴导入 KQueue'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: '粘贴文本，每行“歌名 - 歌手”或“歌名/歌手”',
+                  ),
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      error!,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  )
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        setState(() {
+                          isLoading = true;
+                          error = null;
+                        });
+                        try {
+                          final result = await textService.importFromText(controller.text);
+                          if (!dialogContext.mounted) return;
+                          Navigator.pop(dialogContext);
+                          if (result.errorLines.isNotEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('部分行解析失败：${result.errorLines.join(', ')}'),
+                              ),
+                            );
+                          }
+                          // ignore: use_build_context_synchronously
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => QueuePage(playlist: result.playlist)),
+                          );
+                        } catch (e) {
+                          setState(() {
+                            error = e.toString();
+                          });
+                        } finally {
+                          if (dialogContext.mounted) {
+                            setState(() {
+                              isLoading = false;
+                            });
+                          }
+                        }
+                      },
+                child: Text(isLoading ? '导入中...' : '导入并创建'),
+              )
+            ],
+          );
+        });
+      },
     );
   }
 
