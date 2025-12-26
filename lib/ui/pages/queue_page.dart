@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../data/db/app_database.dart';
 import '../../repository/playlist_repository.dart';
 import '../../state/providers.dart';
+import '../../service/kqueue_text_service.dart';
 
 class QueuePage extends ConsumerWidget {
   final Playlist playlist;
@@ -13,6 +14,7 @@ class QueuePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(playlistRepoProvider);
+    final textService = ref.watch(kqueueTextServiceProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(playlist.name),
@@ -20,12 +22,8 @@ class QueuePage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.ios_share),
             onPressed: () async {
-              final items = await repo.queueItems(playlist.id).first;
-              final buffer = StringBuffer('#K歌歌单\n');
-              for (final row in items) {
-                buffer.writeln('${row.song.title} - ${row.song.artist}');
-              }
-              Share.share(buffer.toString());
+              final text = await textService.exportQueueAsText(playlist.id);
+              Share.share(text);
             },
           ),
           IconButton(

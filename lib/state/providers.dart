@@ -4,12 +4,19 @@ import '../data/db/app_database.dart';
 import '../repository/playlist_repository.dart';
 import '../repository/song_repository.dart';
 import '../repository/tag_repository.dart';
+import '../service/kqueue_text_service.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError());
 
 final songRepoProvider = Provider((ref) => SongRepository(ref.watch(databaseProvider)));
 final tagRepoProvider = Provider((ref) => TagRepository(ref.watch(databaseProvider)));
 final playlistRepoProvider = Provider((ref) => PlaylistRepository(ref.watch(databaseProvider)));
+final kqueueTextServiceProvider = Provider(
+  (ref) => KQueueTextService(
+    ref.watch(songRepoProvider),
+    ref.watch(playlistRepoProvider),
+  ),
+);
 
 final songsProvider = StreamProvider.autoDispose((ref) {
   final repo = ref.watch(songRepoProvider);
