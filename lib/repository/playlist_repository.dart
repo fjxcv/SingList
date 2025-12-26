@@ -52,4 +52,19 @@ class PlaylistRepository {
   Future<void> clearQueue(int playlistId) {
     return db.queueDao.clearQueue(playlistId);
   }
+
+  Future<Playlist> createQueueWithSongs(List<int> songIds) async {
+    final queueId = await create(
+      'KQueue ${DateTime.now().toIso8601String()}',
+      PlaylistType.kQueue,
+    );
+    for (var i = 0; i < songIds.length; i++) {
+      await enqueue(queueId, songIds[i], i);
+    }
+    final playlist = await findById(queueId);
+    if (playlist == null) {
+      throw Exception('Failed to create queue playlist');
+    }
+    return playlist;
+  }
 }
