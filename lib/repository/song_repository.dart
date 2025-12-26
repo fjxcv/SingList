@@ -1,62 +1,39 @@
-import 'package:drift/drift.dart';
-
 import '../data/db/app_database.dart';
-import '../service/normalize.dart';
 
 class SongRepository {
-  final AppDatabase db;
   SongRepository(this.db);
 
-  Future<int> addSong(String title, String artist) async {
-    final titleNorm = normalizeTitle(title);
-    final artistNorm = normalizeArtist(artist);
-    return db.into(db.songs).insert(
-          SongsCompanion.insert(
-            title: title,
-            artist: artist,
-            titleNorm: titleNorm,
-            artistNorm: artistNorm,
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
+  final AppDatabase db;
+
+  Future<int> upsertByTitleArtist(String title, String artist) {
+    return db.songDao.upsertByTitleArtist(title, artist);
   }
 
-  Future<void> updateSong(int id, String title, String artist) async {
-    final titleNorm = normalizeTitle(title);
-    final artistNorm = normalizeArtist(artist);
-    await (db.update(db.songs)..where((tbl) => tbl.id.equals(id))).write(
-      SongsCompanion(
-        title: Value(title),
-        artist: Value(artist),
-        titleNorm: Value(titleNorm),
-        artistNorm: Value(artistNorm),
-      ),
-    );
+  Future<void> updateSong(int id, String title, String artist) {
+    return db.songDao.updateSong(id, title, artist);
   }
 
-  Future<void> deleteSong(int id) async {
-    await db.transaction(() async {
-      await (db.delete(db.songTags)..where((t) => t.songId.equals(id))).go();
-      await (db.delete(db.queueItems)..where((t) => t.songId.equals(id))).go();
-      await (db.delete(db.playlistEntries)..where((t) => t.songId.equals(id))).go();
-      await (db.delete(db.songs)..where((t) => t.id.equals(id))).go();
-    });
+  Future<void> deleteSong(int id) {
+    return db.songDao.deleteSong(id);
   }
 
   Stream<List<Song>> watchAll({String keyword = ''}) {
-    final query = (db.select(db.songs)
-      ..orderBy([(s) => OrderingTerm.desc(s.createdAt)]));
-    if (keyword.trim().isNotEmpty) {
-      final like = '%${keyword.trim()}%';
-      query.where((tbl) => tbl.title.like(like) | tbl.artist.like(like));
-    }
-    return query.watch();
+    return db.songDao.watchAll(keyword: keyword);
   }
 
   Future<List<Song>> search(String keyword) {
-    final like = '%${keyword.trim()}%';
-    return (db.select(db.songs)
-          ..where((tbl) => tbl.title.like(like) | tbl.artist.like(like)))
-        .get();
+    return db.songDao.searchSongs(keyword);
+  }
+
+  Stream<List<Song>> songsByTag(int tagId) {
+    return db.songTagDao.songsByTag(tagId);
+  }
+
+  Future<void> addTagsToSongs({required List<int> songIds, required List<int> tagIds}) {
+    return db.songTagDao.addTagsToSongs(songIds: songIds, tagIds: tagIds);
+  }
+
+  Future<void> removeTagsFromSongs({required List<int> songIds, required List<int> tagIds}) {
+    return db.songTagDao.removeTagsFromSongs(songIds: songIds, tagIds: tagIds);
   }
 }
