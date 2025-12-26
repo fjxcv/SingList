@@ -1,0 +1,32 @@
+name: sing_list
+description: "K歌选歌 - 本地优先的跨端 Flutter MVP"
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  flutter_hooks: ^0.18.6
+  drift: ^2.17.0
+  sqlite3_flutter_libs: ^0.5.24
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  share_plus: ^7.2.1
+  intl: ^0.19.0
+
+flutter:
+  uses-material-design: true
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  drift_dev: ^2.17.0
+  build_runner: ^2.4.8
+  freezed: ^2.5.2
+  lint: ^2.3.0
+  very_good_analysis: ^5.1.0
