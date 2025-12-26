@@ -166,14 +166,10 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   Future<Playlist?> createQueue() async {
     if (!state.completed) return null;
     final playlistRepo = ref.read(playlistRepoProvider);
-    final queueId =
-        await playlistRepo.create('KQueue ${DateTime.now().toIso8601String()}',
-            PlaylistType.kQueue);
     final songs = await _mergeOrderWithWarmup();
-    for (var i = 0; i < songs.length; i++) {
-      await playlistRepo.enqueue(queueId, songs[i].id, i);
-    }
-    return playlistRepo.findById(queueId);
+    return playlistRepo.createQueueWithSongs(
+      songs.map((s) => s.id).toList(),
+    );
   }
 
   Future<List<Song>> _loadSourceSongs() {
