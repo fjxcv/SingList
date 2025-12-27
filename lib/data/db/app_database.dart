@@ -9,13 +9,61 @@ import '../../service/normalize.dart';
 
 part 'app_database.g.dart';
 
+@DriftDatabase(
+  tables: [Songs, Tags, SongTags, Playlists, PlaylistSongs, QueueItems],
+  daos: [SongDao, TagDao, SongTagDao, PlaylistDao, QueueDao],
+)
+class AppDatabase extends _$AppDatabase {
+  AppDatabase(QueryExecutor e) : super(e);
+
+  SongDao get songDao => SongDao(this);
+  TagDao get tagDao => TagDao(this);
+  SongTagDao get songTagDao => SongTagDao(this);
+  PlaylistDao get playlistDao => PlaylistDao(this);
+  QueueDao get queueDao => QueueDao(this);
+
+  @override
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          for (final table in allTables) {
+            await m.drop(table);
+            await m.createTable(table);
+          }
+        },
+      );
+
+  Future<void> seed() async {
+    await tagDao.ensurePresetTags(['开嗓', '气氛', '收尾']);
+  }
+}
+
+LazyDatabase _openConnection() {
+  return LazyDatabase(() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dir.path, 'k_sing.sqlite'));
+    return NativeDatabase.createInBackground(file);
+  });
+}
+
+Future<AppDatabase> createDatabase() async {
+  final db = AppDatabase(_openConnection());
+  await db.customStatement('PRAGMA foreign_keys = ON');
+  await db.seed();
+  return db;
+}
+
+// The rest of your table classes and DAOs go here...
+
 class Songs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get artist => text()();
   TextColumn get titleNorm => text()();
   TextColumn get artistNorm => text()();
-  DateTimeColumn get createdAt => dateTime().withDefault(const CustomExpression('CURRENT_TIMESTAMP'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   List<String> get customConstraints => ['UNIQUE(title_norm, artist_norm)'];
@@ -24,7 +72,7 @@ class Songs extends Table {
 class Tags extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().unique()();
-  DateTimeColumn get createdAt => dateTime().withDefault(const CustomExpression('CURRENT_TIMESTAMP'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 class SongTags extends Table {
@@ -41,7 +89,7 @@ class Playlists extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   IntColumn get type => intEnum<PlaylistType>()();
-  DateTimeColumn get createdAt => dateTime().withDefault(const CustomExpression('CURRENT_TIMESTAMP'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 class PlaylistSongs extends Table {
@@ -59,42 +107,6 @@ class QueueItems extends Table {
   IntColumn get playlistId => integer().references(Playlists, #id)();
   IntColumn get songId => integer().references(Songs, #id)();
   IntColumn get position => integer().withDefault(const Constant(0))();
-}
-
-@DriftDatabase(
-  tables: [Songs, Tags, SongTags, Playlists, PlaylistSongs, QueueItems],
-  daos: [SongDao, TagDao, SongTagDao, PlaylistDao, QueueDao],
-)
-class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
-
-  SongDao get songDao => SongDao(this);
-  TagDao get tagDao => TagDao(this);
-  SongTagDao get songTagDao => SongTagDao(this);
-  PlaylistDao get playlistDao => PlaylistDao(this);
-  QueueDao get queueDao => QueueDao(this);
-
-  @override
-  int get schemaVersion => 1;
-
-  Future<void> seed() async {
-    await tagDao.ensurePresetTags(['开嗓', '气氛', '收尾']);
-  }
-}
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'k_sing.sqlite'));
-    return NativeDatabase.createInBackground(file);
-  });
-}
-
-Future<AppDatabase> createDatabase() async {
-  final db = AppDatabase();
-  await db.customStatement('PRAGMA foreign_keys = ON');
-  await db.seed();
-  return db;
 }
 
 @DriftAccessor(tables: [Songs])
@@ -215,9 +227,10 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
 
   Future<void> ensurePresetTags(List<String> names) async {
     await batch((b) {
-      b.insertAllOnConflictUpdate(
+      b.insertAll(
         tags,
         names.map((name) => TagsCompanion.insert(name: name)).toList(),
+        mode: InsertMode.insertOrIgnore,
       );
     });
   }

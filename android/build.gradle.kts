@@ -1,11 +1,10 @@
 allprojects {
     repositories {
-    maven(url = "https://maven.aliyun.com/repository/google")
-    maven(url = "https://maven.aliyun.com/repository/public")
-    maven(url = "https://maven.aliyun.com/repository/central")
-    google()
-    mavenCentral()
-    }
+    maven("https://maven.aliyun.com/repository/google") //Ìæ»»google()
+    maven("https://maven.aliyun.com/repository/central")
+    maven("https://maven.aliyun.com/repository/public")
+    maven("https://maven.aliyun.com/repository/gradle-plugin")
+}
 }
 
 val newBuildDir: Directory =

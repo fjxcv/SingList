@@ -72,7 +72,7 @@ class RandomQueuePage extends ConsumerWidget {
                   decoration: const InputDecoration(labelText: '数量'),
                   keyboardType: TextInputType.number,
                   onChanged: (v) =>
-                      notifier.updateCount(int.tryParse(v.trim()) ?? state.count),
+                      notifier.updateCount(int.parse(v.trim())),
                 ),
               ),
               const SizedBox(width: 12),
@@ -102,7 +102,7 @@ class RandomQueuePage extends ConsumerWidget {
                   decoration: const InputDecoration(labelText: '数量'),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => notifier.updateWarmupCount(
-                    int.tryParse(v.trim()) ?? state.warmupCount,
+                    int.parse(v.trim()),
                   ),
                 ),
               ),

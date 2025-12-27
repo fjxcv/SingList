@@ -46,7 +46,7 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, Song> {
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
-      defaultValue: const CustomExpression('CURRENT_TIMESTAMP'));
+      defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns =>
       [id, title, artist, titleNorm, artistNorm, createdAt];
@@ -367,7 +367,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
-      defaultValue: const CustomExpression('CURRENT_TIMESTAMP'));
+      defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns => [id, name, createdAt];
   @override
@@ -780,7 +780,7 @@ class $PlaylistsTable extends Playlists
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
-      defaultValue: const CustomExpression('CURRENT_TIMESTAMP'));
+      defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns => [id, name, type, createdAt];
   @override

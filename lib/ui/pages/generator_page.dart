@@ -110,13 +110,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                   decoration: const InputDecoration(labelText: '数量'),
                   keyboardType: TextInputType.number,
                   onChanged: (v) {
-                    final parsed = int.tryParse(v.trim()) ?? 0;
-                    final clamped = parsed < 0
-                        ? 0
-                        : parsed > 50
-                            ? 50
-                            : parsed;
-                    notifier.updateWarmupCount(clamped);
+                    notifier.updateWarmupCount(int.parse(v.trim()));
                   },
                 ),
               ),
