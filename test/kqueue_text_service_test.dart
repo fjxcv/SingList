@@ -55,9 +55,7 @@ class FakeSongRepository implements SongRepository {
       throw UnimplementedError();
 
   @override
-  Future<int> addSong(String title, String artist) {
-    throw UnimplementedError();
-  }
+  Future<int> addSong(String title, String artist) => upsertByTitleArtist(title, artist);
 }
 
 class FakePlaylistRepository implements PlaylistRepository {
@@ -107,7 +105,17 @@ class FakePlaylistRepository implements PlaylistRepository {
   @override
   Future<Playlist?> findById(int id) => throw UnimplementedError();
   @override
-  Future<int> enqueue(int playlistId, int songId, int position) => throw UnimplementedError();
+  Future<int> enqueue(int playlistId, int songId, int position) async {
+    final item = QueueItem(
+      id: _queueItemId++,
+      playlistId: playlistId,
+      songId: songId,
+      position: position,
+    );
+    final queue = _queues.putIfAbsent(playlistId, () => []);
+    queue.add(QueueItemWithSong(item: item, song: songRepository.songById(songId)));
+    return item.id;
+  }
   @override
   Future<void> reorderQueue(int playlistId, List<int> itemIdsInOrder) => throw UnimplementedError();
   @override
@@ -120,8 +128,10 @@ class FakePlaylistRepository implements PlaylistRepository {
   Future<void> addSongsToPlaylist(int playlistId, List<int> songIds) => throw UnimplementedError();
 
   @override
-  Future<void> removeQueueItem(int id) {
-    throw UnimplementedError();
+  Future<void> removeQueueItem(int id) async {
+    for (final queue in _queues.values) {
+      queue.removeWhere((element) => element.item.id == id);
+    }
   }
 }
 
