@@ -5,6 +5,10 @@ class SongRepository {
 
   final AppDatabase db;
 
+  Future<int> addSong(String title, String artist) {
+    return upsertByTitleArtist(title, artist);
+  }
+
   Future<int> upsertByTitleArtist(String title, String artist) {
     return db.songDao.upsertByTitleArtist(title, artist);
   }

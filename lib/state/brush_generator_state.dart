@@ -6,6 +6,7 @@ import '../data/db/app_database.dart';
 import '../repository/playlist_repository.dart';
 import '../repository/song_repository.dart';
 import '../repository/tag_repository.dart';
+import 'providers.dart';
 
 enum BrushSourceType { all, tag, playlist }
 
