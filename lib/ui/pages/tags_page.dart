@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/db/app_database.dart';
 import '../../repository/tag_repository.dart';
 import '../../state/providers.dart';
 import 'songs_by_tag_page.dart';
@@ -42,7 +43,7 @@ class TagsPage extends ConsumerWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline),
-                    onPressed: () => repo.delete(tag.id),
+                    onPressed: () => repo.deleteTag(tag.id),
                   )
                 ],
               ),

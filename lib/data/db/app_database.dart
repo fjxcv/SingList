@@ -15,7 +15,7 @@ class Songs extends Table {
   TextColumn get artist => text()();
   TextColumn get titleNorm => text()();
   TextColumn get artistNorm => text()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(const CustomExpression('CURRENT_TIMESTAMP'))();
 
   @override
   List<String> get customConstraints => ['UNIQUE(title_norm, artist_norm)'];
@@ -24,7 +24,7 @@ class Songs extends Table {
 class Tags extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().unique()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(const CustomExpression('CURRENT_TIMESTAMP'))();
 }
 
 class SongTags extends Table {
@@ -41,7 +41,7 @@ class Playlists extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   IntColumn get type => intEnum<PlaylistType>()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(const CustomExpression('CURRENT_TIMESTAMP'))();
 }
 
 class PlaylistSongs extends Table {
@@ -172,9 +172,9 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
 
   Future<List<Song>> fetchSongsByTagSorted(int tagId) {
     final query = select(songs).join([
-      innerJoin(songTags, songTags.songId.equalsExp(songs.id)),
+      innerJoin(db.songTags, db.songTags.songId.equalsExp(songs.id)),
     ]);
-    query.where(songTags.tagId.equals(tagId));
+    query.where(db.songTags.tagId.equals(tagId));
     query.orderBy([
       OrderingTerm.asc(songs.titleNorm),
       OrderingTerm.asc(songs.artistNorm),
@@ -206,7 +206,7 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
         .write(TagsCompanion(name: Value(name)));
   }
 
-  Future<void> delete(int id) async {
+  Future<void> deleteTag(int id) async {
     await transaction(() async {
       await (delete(db.songTags)..where((t) => t.tagId.equals(id))).go();
       await (delete(tags)..where((t) => t.id.equals(id))).go();
@@ -253,9 +253,9 @@ class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
 
   Stream<List<Song>> songsByTag(int tagId) {
     final query = select(songs).join([
-      innerJoin(songTags, songTags.songId.equalsExp(songs.id)),
+      innerJoin(db.songTags, db.songTags.songId.equalsExp(songs.id)),
     ]);
-    query.where(songTags.tagId.equals(tagId));
+    query.where(db.songTags.tagId.equals(tagId));
     query.orderBy([OrderingTerm.asc(songs.title)]);
     return query.watch().map((rows) => rows.map((r) => r.readTable(songs)).toList());
   }

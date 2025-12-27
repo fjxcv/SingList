@@ -53,6 +53,11 @@ class FakeSongRepository implements SongRepository {
   @override
   Future<void> removeTagsFromSongs({required List<int> songIds, required List<int> tagIds}) =>
       throw UnimplementedError();
+
+  @override
+  Future<int> addSong(String title, String artist) {
+    throw UnimplementedError();
+  }
 }
 
 class FakePlaylistRepository implements PlaylistRepository {
@@ -102,7 +107,7 @@ class FakePlaylistRepository implements PlaylistRepository {
   @override
   Future<Playlist?> findById(int id) => throw UnimplementedError();
   @override
-  Future<void> enqueue(int playlistId, int songId, int position) => throw UnimplementedError();
+  Future<int> enqueue(int playlistId, int songId, int position) => throw UnimplementedError();
   @override
   Future<void> reorderQueue(int playlistId, List<int> itemIdsInOrder) => throw UnimplementedError();
   @override
@@ -113,6 +118,11 @@ class FakePlaylistRepository implements PlaylistRepository {
   Stream<List<Playlist>> watchByType(PlaylistType type) => throw UnimplementedError();
   @override
   Future<void> addSongsToPlaylist(int playlistId, List<int> songIds) => throw UnimplementedError();
+
+  @override
+  Future<void> removeQueueItem(int id) {
+    throw UnimplementedError();
+  }
 }
 
 void main() {

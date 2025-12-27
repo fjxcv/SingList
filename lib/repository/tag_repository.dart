@@ -11,7 +11,7 @@ class TagRepository {
 
   Future<void> rename(int id, String name) => db.tagDao.rename(id, name);
 
-  Future<void> delete(int id) => db.tagDao.delete(id);
+  Future<void> deleteTag(int id) => db.tagDao.deleteTag(id);
 
   Future<void> ensurePresetTags(List<String> names) => db.tagDao.ensurePresetTags(names);
 
