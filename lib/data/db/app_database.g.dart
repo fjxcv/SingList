@@ -106,10 +106,34 @@ class SongsCompanion extends UpdateCompanion<Song> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (artist != null) 'artist': artist,
-      if (titleNorm != null) 'title_norm': titleNorm,
-      if (artistNorm != null) 'artist_norm': artistNorm,
-      if (createdAt != null) 'created_at': createdAt,
-    });
+        if (titleNorm != null) 'title_norm': titleNorm,
+        if (artistNorm != null) 'artist_norm': artistNorm,
+        if (createdAt != null) 'created_at': createdAt,
+      });
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (artist.present) {
+      map['artist'] = Variable<String>(artist.value);
+    }
+    if (titleNorm.present) {
+      map['title_norm'] = Variable<String>(titleNorm.value);
+    }
+    if (artistNorm.present) {
+      map['artist_norm'] = Variable<String>(artistNorm.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
   }
 }
 
@@ -232,6 +256,11 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, Song> {
       createdAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
   }
+
+  @override
+  $SongsTable createAlias(String alias) {
+    return $SongsTable(attachedDatabase, alias);
+  }
 }
 
 class Tag extends DataClass implements Insertable<Tag> {
@@ -252,6 +281,25 @@ class Tag extends DataClass implements Insertable<Tag> {
         name: Value(name),
         createdAt: Value(createdAt),
       );
+
+  factory Tag.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Tag(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
 }
 
 class TagsCompanion extends UpdateCompanion<Tag> {
@@ -268,6 +316,21 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     required String name,
     this.createdAt = const Value.absent(),
   }) : name = Value(name);
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
 }
 
 class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
@@ -335,6 +398,11 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
       createdAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
   }
+
+  @override
+  $TagsTable createAlias(String alias) {
+    return $TagsTable(attachedDatabase, alias);
+  }
 }
 
 class SongTag extends DataClass implements Insertable<SongTag> {
@@ -352,6 +420,23 @@ class SongTag extends DataClass implements Insertable<SongTag> {
         songId: Value(songId),
         tagId: Value(tagId),
       );
+
+  factory SongTag.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SongTag(
+      songId: serializer.fromJson<int>(json['songId']),
+      tagId: serializer.fromJson<int>(json['tagId']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'songId': serializer.toJson<int>(songId),
+      'tagId': serializer.toJson<int>(tagId),
+    };
+  }
 }
 
 class SongTagsCompanion extends UpdateCompanion<SongTag> {
@@ -361,6 +446,18 @@ class SongTagsCompanion extends UpdateCompanion<SongTag> {
   SongTagsCompanion.insert({required int songId, required int tagId})
       : songId = Value(songId),
         tagId = Value(tagId);
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (songId.present) {
+      map['song_id'] = Variable<int>(songId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<int>(tagId.value);
+    }
+    return map;
+  }
 }
 
 class $SongTagsTable extends SongTags with TableInfo<$SongTagsTable, SongTag> {
@@ -374,10 +471,14 @@ class $SongTagsTable extends SongTags with TableInfo<$SongTagsTable, SongTag> {
 
   @override
   late final GeneratedColumn<int> songId = GeneratedColumn<int>('song_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: 'REFERENCES songs (id) ON DELETE CASCADE');
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES songs (id) ON DELETE CASCADE'));
   @override
   late final GeneratedColumn<int> tagId = GeneratedColumn<int>('tag_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: 'REFERENCES tags (id) ON DELETE CASCADE');
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES tags (id) ON DELETE CASCADE'));
 
   @override
   List<GeneratedColumn> get $columns => [songId, tagId];
@@ -414,6 +515,11 @@ class $SongTagsTable extends SongTags with TableInfo<$SongTagsTable, SongTag> {
       tagId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}tag_id'])!,
     );
   }
+
+  @override
+  $SongTagsTable createAlias(String alias) {
+    return $SongTagsTable(attachedDatabase, alias);
+  }
 }
 
 class Playlist extends DataClass implements Insertable<Playlist> {
@@ -437,6 +543,27 @@ class Playlist extends DataClass implements Insertable<Playlist> {
         type: Value(type),
         createdAt: Value(createdAt),
       );
+
+  factory Playlist.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Playlist(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      type: serializer.fromJson<PlaylistType>(json['type']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'type': serializer.toJson<PlaylistType>(type),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
 }
 
 class PlaylistsCompanion extends UpdateCompanion<Playlist> {
@@ -457,6 +584,24 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     this.createdAt = const Value.absent(),
   })  : name = Value(name),
         type = Value(type);
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<int>(type.value.index);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
 }
 
 class $PlaylistsTable extends Playlists with TableInfo<$PlaylistsTable, Playlist> {
@@ -537,6 +682,11 @@ class $PlaylistsTable extends Playlists with TableInfo<$PlaylistsTable, Playlist
       createdAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
   }
+
+  @override
+  $PlaylistsTable createAlias(String alias) {
+    return $PlaylistsTable(attachedDatabase, alias);
+  }
 }
 
 class PlaylistSong extends DataClass implements Insertable<PlaylistSong> {
@@ -560,6 +710,27 @@ class PlaylistSong extends DataClass implements Insertable<PlaylistSong> {
         songId: Value(songId),
         position: Value(position),
       );
+
+  factory PlaylistSong.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlaylistSong(
+      id: serializer.fromJson<int>(json['id']),
+      playlistId: serializer.fromJson<int>(json['playlistId']),
+      songId: serializer.fromJson<int>(json['songId']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'playlistId': serializer.toJson<int>(playlistId),
+      'songId': serializer.toJson<int>(songId),
+      'position': serializer.toJson<int>(position),
+    };
+  }
 }
 
 class PlaylistSongsCompanion extends UpdateCompanion<PlaylistSong> {
@@ -580,6 +751,24 @@ class PlaylistSongsCompanion extends UpdateCompanion<PlaylistSong> {
     this.position = const Value.absent(),
   })  : playlistId = Value(playlistId),
         songId = Value(songId);
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (playlistId.present) {
+      map['playlist_id'] = Variable<int>(playlistId.value);
+    }
+    if (songId.present) {
+      map['song_id'] = Variable<int>(songId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    return map;
+  }
 }
 
 class $PlaylistSongsTable extends PlaylistSongs with TableInfo<$PlaylistSongsTable, PlaylistSong> {
@@ -601,10 +790,14 @@ class $PlaylistSongsTable extends PlaylistSongs with TableInfo<$PlaylistSongsTab
       defaultConstraints: GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
   @override
   late final GeneratedColumn<int> playlistId = GeneratedColumn<int>('playlist_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: 'REFERENCES playlists (id) ON DELETE CASCADE');
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES playlists (id) ON DELETE CASCADE'));
   @override
   late final GeneratedColumn<int> songId = GeneratedColumn<int>('song_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: 'REFERENCES songs (id) ON DELETE CASCADE');
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES songs (id) ON DELETE CASCADE'));
   @override
   late final GeneratedColumn<int> position = GeneratedColumn<int>('position', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: false, defaultValue: const Constant(0));
@@ -652,6 +845,11 @@ class $PlaylistSongsTable extends PlaylistSongs with TableInfo<$PlaylistSongsTab
       position: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}position'])!,
     );
   }
+
+  @override
+  $PlaylistSongsTable createAlias(String alias) {
+    return $PlaylistSongsTable(attachedDatabase, alias);
+  }
 }
 
 class QueueItem extends DataClass implements Insertable<QueueItem> {
@@ -675,6 +873,27 @@ class QueueItem extends DataClass implements Insertable<QueueItem> {
         songId: Value(songId),
         position: Value(position),
       );
+
+  factory QueueItem.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QueueItem(
+      id: serializer.fromJson<int>(json['id']),
+      playlistId: serializer.fromJson<int>(json['playlistId']),
+      songId: serializer.fromJson<int>(json['songId']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'playlistId': serializer.toJson<int>(playlistId),
+      'songId': serializer.toJson<int>(songId),
+      'position': serializer.toJson<int>(position),
+    };
+  }
 }
 
 class QueueItemsCompanion extends UpdateCompanion<QueueItem> {
@@ -695,6 +914,24 @@ class QueueItemsCompanion extends UpdateCompanion<QueueItem> {
     this.position = const Value.absent(),
   })  : playlistId = Value(playlistId),
         songId = Value(songId);
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (playlistId.present) {
+      map['playlist_id'] = Variable<int>(playlistId.value);
+    }
+    if (songId.present) {
+      map['song_id'] = Variable<int>(songId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    return map;
+  }
 }
 
 class $QueueItemsTable extends QueueItems with TableInfo<$QueueItemsTable, QueueItem> {
@@ -716,10 +953,14 @@ class $QueueItemsTable extends QueueItems with TableInfo<$QueueItemsTable, Queue
       defaultConstraints: GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
   @override
   late final GeneratedColumn<int> playlistId = GeneratedColumn<int>('playlist_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: 'REFERENCES playlists (id) ON DELETE CASCADE');
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES playlists (id) ON DELETE CASCADE'));
   @override
   late final GeneratedColumn<int> songId = GeneratedColumn<int>('song_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: 'REFERENCES songs (id) ON DELETE CASCADE');
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES songs (id) ON DELETE CASCADE'));
   @override
   late final GeneratedColumn<int> position = GeneratedColumn<int>('position', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: false, defaultValue: const Constant(0));
@@ -766,6 +1007,11 @@ class $QueueItemsTable extends QueueItems with TableInfo<$QueueItemsTable, Queue
       songId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}song_id'])!,
       position: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}position'])!,
     );
+  }
+
+  @override
+  $QueueItemsTable createAlias(String alias) {
+    return $QueueItemsTable(attachedDatabase, alias);
   }
 }
 
