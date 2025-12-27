@@ -172,9 +172,9 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
 
   Future<List<Song>> fetchSongsByTagSorted(int tagId) {
     final query = select(songs).join([
-      innerJoin(songTags, songTags.songId.equalsExp(songs.id)),
+      innerJoin(db.songTags, db.songTags.songId.equalsExp(songs.id)),
     ]);
-    query.where(songTags.tagId.equals(tagId));
+    query.where(db.songTags.tagId.equals(tagId));
     query.orderBy([
       OrderingTerm.asc(songs.titleNorm),
       OrderingTerm.asc(songs.artistNorm),
@@ -206,7 +206,7 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
         .write(TagsCompanion(name: Value(name)));
   }
 
-  Future<void> delete(int id) async {
+  Future<void> deleteTag(int id) async {
     await transaction(() async {
       await (delete(db.songTags)..where((t) => t.tagId.equals(id))).go();
       await (delete(tags)..where((t) => t.id.equals(id))).go();

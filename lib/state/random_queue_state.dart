@@ -7,6 +7,7 @@ import '../repository/playlist_repository.dart';
 import '../repository/song_repository.dart';
 import '../repository/tag_repository.dart';
 import 'brush_generator_state.dart';
+import 'providers.dart';
 
 class RandomQueueState {
   const RandomQueueState({
@@ -169,7 +170,7 @@ class RandomQueueNotifier extends AutoDisposeNotifier<RandomQueueState> {
     if (pool.isEmpty) return [];
     pool.shuffle(rng);
     final take = state.avoidRepeat
-        ? min(state.warmupCount, pool.length)
+        ? min<int>(state.warmupCount, pool.length)
         : state.warmupCount;
     return List.generate(take, (index) {
       if (state.avoidRepeat) {

@@ -11,9 +11,15 @@ class TagRepository {
 
   Future<void> rename(int id, String name) => db.tagDao.rename(id, name);
 
-  Future<void> delete(int id) => db.tagDao.delete(id);
+  Future<void> delete(int id) => db.tagDao.deleteTag(id);
 
   Future<void> ensurePresetTags(List<String> names) => db.tagDao.ensurePresetTags(names);
 
   Future<Tag?> findByName(String name) => db.tagDao.findByName(name);
+
+  Stream<List<Song>> songsByTag(int tagId) => db.songTagDao.songsByTag(tagId);
+
+  Future<void> attachSongs(int tagId, List<int> songIds) {
+    return db.songTagDao.addTagsToSongs(songIds: songIds, tagIds: [tagId]);
+  }
 }

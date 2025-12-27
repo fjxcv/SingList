@@ -14,7 +14,7 @@ class SongsByTagPage extends ConsumerWidget {
     final repo = ref.watch(tagRepoProvider);
     return Scaffold(
       appBar: AppBar(title: Text('#${tag.name}')),
-      body: StreamBuilder(
+      body: StreamBuilder<List<Song>>(
         stream: repo.songsByTag(tag.id),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
