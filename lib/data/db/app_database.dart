@@ -328,6 +328,12 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
     return (select(playlists)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
+  Future<void> renamePlaylist(int id, String name) {
+    return (update(playlists)..where((tbl) => tbl.id.equals(id))).write(
+      PlaylistsCompanion(name: Value(name)),
+    );
+  }
+
   Stream<List<Song>> songsInPlaylist(int playlistId) {
     final query = select(songs).join([
       innerJoin(playlistSongs, playlistSongs.songId.equalsExp(songs.id)),

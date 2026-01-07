@@ -23,6 +23,7 @@ class BrushGeneratorState {
     this.error,
     this.warmupEnabled = true,
     this.warmupCount = 2,
+    this.inBrushMode = false,
   });
 
   final BrushSourceType sourceType;
@@ -36,6 +37,7 @@ class BrushGeneratorState {
   final String? error;
   final bool warmupEnabled;
   final int warmupCount;
+  final bool inBrushMode;
 
   Song? get currentSong =>
       currentIndex < songs.length ? songs[currentIndex] : null;
@@ -54,6 +56,7 @@ class BrushGeneratorState {
     String? error,
     bool? warmupEnabled,
     int? warmupCount,
+    bool? inBrushMode,
   }) {
     return BrushGeneratorState(
       sourceType: sourceType ?? this.sourceType,
@@ -67,6 +70,7 @@ class BrushGeneratorState {
       error: error,
       warmupEnabled: warmupEnabled ?? this.warmupEnabled,
       warmupCount: warmupCount ?? this.warmupCount,
+      inBrushMode: inBrushMode ?? this.inBrushMode,
     );
   }
 }
@@ -92,6 +96,7 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
       favorites: const [],
       likes: const [],
       currentIndex: 0,
+      inBrushMode: false,
     );
   }
 
@@ -112,7 +117,11 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   }
 
   Future<void> loadSongs() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+      inBrushMode: true,
+    );
     try {
       final songs = await _loadSourceSongs();
       if (songs.isEmpty) {
@@ -123,6 +132,7 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
           favorites: const [],
           likes: const [],
           currentIndex: 0,
+          inBrushMode: false,
         );
         return;
       }
@@ -165,11 +175,23 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   }
 
   Future<Playlist?> createQueue() async {
-    if (!state.completed) return null;
     final playlistRepo = ref.read(playlistRepoProvider);
     final songs = await _mergeOrderWithWarmup();
+    if (songs.isEmpty) return null;
     return playlistRepo.createQueueWithSongs(
       songs.map((s) => s.id).toList(),
+    );
+  }
+
+  void exitBrushMode() {
+    state = state.copyWith(
+      inBrushMode: false,
+      songs: const [],
+      currentIndex: 0,
+      favorites: const [],
+      likes: const [],
+      isLoading: false,
+      error: null,
     );
   }
 

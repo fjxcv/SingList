@@ -45,6 +45,29 @@ class _BrushGeneratorTab extends ConsumerWidget {
     final tags = ref.watch(tagsProvider).valueOrNull ?? [];
     final playlists = ref.watch(normalPlaylistsProvider).valueOrNull ?? [];
 
+    if (state.inBrushMode) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: _BrushBody(
+          state: state,
+          onFavorite: notifier.markFavorite,
+          onLike: notifier.markLike,
+          onSkip: notifier.skip,
+          onFinish: () async {
+            final playlist = await notifier.createQueue();
+            if (playlist == null || !context.mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => QueuePage(playlist: playlist),
+              ),
+            );
+          },
+          onBack: () => _handleBack(context, notifier),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -72,7 +95,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
               FilledButton.icon(
                 onPressed: state.isLoading ? null : () => notifier.loadSongs(),
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('载入来源'),
+                label: const Text('开始刷歌'),
               ),
             ],
           ),
@@ -121,30 +144,60 @@ class _BrushGeneratorTab extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Text(state.error!, style: const TextStyle(color: Colors.red)),
             ),
+          const Spacer(),
+          const Center(child: Text('选择来源后开始刷歌')),
           const SizedBox(height: 12),
-          Expanded(
-            child: _BrushBody(
-              state: state,
-              onFavorite: notifier.markFavorite,
-              onLike: notifier.markLike,
-              onSkip: notifier.skip,
-              onFinish: () async {
-                final playlist = await notifier.createQueue();
-                if (playlist == null || !context.mounted) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => QueuePage(playlist: playlist),
-                  ),
-                );
-              },
-            ),
-          ),
         ],
       ),
     );
   }
+
+  Future<void> _handleBack(
+    BuildContext context,
+    BrushGeneratorNotifier notifier,
+  ) async {
+    final action = await showDialog<_BrushBackAction>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('返回刷歌设置'),
+        content: const Text('是否保存已刷的歌并生成 KQueue 歌单？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, _BrushBackAction.cancel),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, _BrushBackAction.discard),
+            child: const Text('不保存'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, _BrushBackAction.save),
+            child: const Text('保存并生成'),
+          ),
+        ],
+      ),
+    );
+    if (action == null || action == _BrushBackAction.cancel) return;
+    if (action == _BrushBackAction.save) {
+      final playlist = await notifier.createQueue();
+      if (playlist != null && context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => QueuePage(playlist: playlist),
+          ),
+        );
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂无可保存的歌曲')),
+        );
+      }
+    }
+    notifier.exitBrushMode();
+  }
 }
+
+enum _BrushBackAction { cancel, discard, save }
 
 class _BrushBody extends StatelessWidget {
   const _BrushBody({
@@ -153,6 +206,7 @@ class _BrushBody extends StatelessWidget {
     required this.onLike,
     required this.onSkip,
     required this.onFinish,
+    required this.onBack,
   });
 
   final BrushGeneratorState state;
@@ -160,29 +214,38 @@ class _BrushBody extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onSkip;
   final VoidCallback onFinish;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    Widget content;
     if (state.currentSong != null) {
-      return _SongCard(
+      content = _SongCard(
         song: state.currentSong!,
         progress: '${state.currentIndex + 1}/${state.songs.length}',
         onFavorite: onFavorite,
         onLike: onLike,
         onSkip: onSkip,
+        onBack: onBack,
       );
-    }
-    if (state.completed) {
-      return _FinishCard(
+    } else if (state.completed) {
+      content = _FinishCard(
         favorites: state.favorites,
         likes: state.likes,
         onFinish: onFinish,
+        onBack: onBack,
       );
+    } else {
+      content = const Text('选择来源后开始刷歌');
     }
-    return const Center(child: Text('选择来源后开始刷歌'));
+    return Center(
+      child: SingleChildScrollView(
+        child: content,
+      ),
+    );
   }
 }
 
@@ -193,6 +256,7 @@ class _SongCard extends StatelessWidget {
     required this.onFavorite,
     required this.onLike,
     required this.onSkip,
+    required this.onBack,
   });
 
   final Song song;
@@ -200,6 +264,7 @@ class _SongCard extends StatelessWidget {
   final VoidCallback onFavorite;
   final VoidCallback onLike;
   final VoidCallback onSkip;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +274,14 @@ class _SongCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: '返回',
+                onPressed: onBack,
+              ),
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: Text(progress, style: Theme.of(context).textTheme.bodyMedium),
@@ -251,11 +324,13 @@ class _FinishCard extends StatelessWidget {
     required this.favorites,
     required this.likes,
     required this.onFinish,
+    required this.onBack,
   });
 
   final List<Song> favorites;
   final List<Song> likes;
   final VoidCallback onFinish;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -265,6 +340,14 @@ class _FinishCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: '返回',
+                onPressed: onBack,
+              ),
+            ),
             Text('⭐ ${favorites.length} | ✅ ${likes.length}'),
             const SizedBox(height: 12),
             FilledButton(

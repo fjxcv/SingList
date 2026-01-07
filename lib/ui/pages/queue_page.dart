@@ -51,6 +51,10 @@ class QueuePage extends ConsumerWidget {
               final entry = items[index];
               return ListTile(
                 key: ValueKey(entry.item.id),
+                leading: CircleAvatar(
+                  radius: 14,
+                  child: Text('${index + 1}'),
+                ),
                 title: Text(entry.song.title),
                 subtitle: Text(entry.song.artist),
                 trailing: IconButton(

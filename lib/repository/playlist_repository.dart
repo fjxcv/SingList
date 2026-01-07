@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import '../data/db/app_database.dart';
 
 class PlaylistRepository {
@@ -33,6 +35,10 @@ class PlaylistRepository {
     return db.playlistDao.findById(id);
   }
 
+  Future<void> rename(int id, String name) {
+    return db.playlistDao.renamePlaylist(id, name);
+  }
+
   Stream<List<QueueItemWithSong>> queueItems(int playlistId) {
     return db.queueDao.queueItemsWithSongs(playlistId);
   }
@@ -54,8 +60,9 @@ class PlaylistRepository {
   }
 
   Future<Playlist> createQueueWithSongs(List<int> songIds) async {
+    final timestamp = DateFormat('yyyy-MM-dd/HH:mm:ss').format(DateTime.now());
     final queueId = await create(
-      'KQueue ${DateTime.now().toIso8601String()}',
+      timestamp,
       PlaylistType.kQueue,
     );
     for (var i = 0; i < songIds.length; i++) {
