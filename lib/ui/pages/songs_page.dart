@@ -30,7 +30,11 @@ class _SongsPageState extends ConsumerState<SongsPage> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => _showAddDialog(context, repo),
-          )
+          ),
+          IconButton(
+            icon: const Icon(Icons.upload),
+            onPressed: () => _showBulkImportDialog(context, repo),
+          ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64),
@@ -128,15 +132,97 @@ class _SongsPageState extends ConsumerState<SongsPage> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
           FilledButton(
-            onPressed: () {
-              repo.addSong(titleController.text, artistController.text);
-              Navigator.pop(context);
+            onPressed: () async {
+              final result = await repo.addSong(titleController.text, artistController.text);
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result == SongUpsertResult.created ? '添加成功' : '歌曲已存在'),
+                  ),
+                );
+              }
             },
             child: const Text('保存'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showBulkImportDialog(BuildContext context, SongRepository repo) async {
+    final textController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('批量导入'),
+        content: TextField(
+          controller: textController,
+          maxLines: 10,
+          decoration: const InputDecoration(
+            hintText: '每行一首，支持格式：\n歌名 - 歌手\n歌名-歌手\n歌名，歌手\n歌名,歌手\n歌名 歌手',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+            onPressed: () async {
+              final lines = textController.text.split('\n');
+              int successCount = 0;
+              List<String> errorLines = [];
+
+              for (final line in lines) {
+                if (line.trim().isEmpty) continue;
+
+                final parts = _parseSongLine(line);
+                if (parts == null) {
+                  errorLines.add(line);
+                  continue;
+                }
+
+                final result = await repo.addSong(parts[0], parts[1]);
+                if (result == SongUpsertResult.created) {
+                  successCount++;
+                }
+              }
+
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('导入完成：$successCount 首成功，${errorLines.length} 行失败'),
+                  ),
+                );
+              }
+            },
+            child: const Text('导入'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String>? _parseSongLine(String line) {
+    const delimiters = [' - ', '-', ' – ', '–', '—', '，', ',', ' '];
+
+    for (var delimiter in delimiters) {
+      final index = line.lastIndexOf(delimiter);
+
+      if (index > 0 && index < line.length - 1) {
+        final title = line.substring(0, index).trim();
+        final artist = line.substring(index + delimiter.length).trim();
+
+        if (title.isNotEmpty) {
+          return [title, artist];
+        }
+      }
+    }
+
+    if (line.trim().isNotEmpty) {
+      return [line.trim(), ''];
+    }
+
+    return null;
   }
 
   Future<void> _editDialog(BuildContext context, SongRepository repo, Song song) async {

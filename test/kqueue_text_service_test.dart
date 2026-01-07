@@ -55,8 +55,22 @@ class FakeSongRepository implements SongRepository {
       throw UnimplementedError();
 
   @override
-  Future<int> addSong(String title, String artist) {
-    throw UnimplementedError();
+  Future<SongUpsertResult> addSong(String title, String artist) async {
+    final key = '${normalizeTitle(title)}|${normalizeArtist(artist)}';
+    if (_byKey.containsKey(key)) {
+      return SongUpsertResult.existed;
+    }
+    final song = Song(
+      id: _id++,
+      title: title,
+      artist: artist,
+      titleNorm: normalizeTitle(title),
+      artistNorm: normalizeArtist(artist),
+      createdAt: DateTime.now(),
+    );
+    _songs[song.id] = song;
+    _byKey[key] = song.id;
+    return SongUpsertResult.created;
   }
 }
 

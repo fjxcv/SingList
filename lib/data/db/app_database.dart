@@ -9,6 +9,8 @@ import '../../service/normalize.dart';
 
 part 'app_database.g.dart';
 
+enum SongUpsertResult { created, existed }
+
 @DriftDatabase(
   tables: [Songs, Tags, SongTags, Playlists, PlaylistSongs, QueueItems],
   daos: [SongDao, TagDao, SongTagDao, PlaylistDao, QueueDao],
@@ -112,6 +114,31 @@ class QueueItems extends Table {
 @DriftAccessor(tables: [Songs])
 class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   SongDao(super.db);
+
+  Future<SongUpsertResult> addSong(String title, String artist) async {
+    final titleNorm = normalizeTitle(title);
+    final artistNorm = normalizeArtist(artist);
+    final existing = await (select(songs)
+          ..where(
+            (tbl) => tbl.titleNorm.equals(titleNorm) &
+                tbl.artistNorm.equals(artistNorm),
+          ))
+        .getSingleOrNull();
+
+    if (existing != null) {
+      return SongUpsertResult.existed;
+    }
+
+    await into(songs).insert(
+      SongsCompanion.insert(
+        title: title,
+        artist: artist,
+        titleNorm: titleNorm,
+        artistNorm: artistNorm,
+      ),
+    );
+    return SongUpsertResult.created;
+  }
 
   Future<int> upsertByTitleArtist(String title, String artist) async {
     final titleNorm = normalizeTitle(title);
