@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../repository/playlist_repository.dart';
 import '../../repository/song_repository.dart';
 import '../../repository/tag_repository.dart';
-import '../../service/normalize.dart';
 import '../../state/providers.dart';
 import '../../data/db/app_database.dart';
 
@@ -18,6 +17,7 @@ class SongsPage extends ConsumerStatefulWidget {
 class _SongsPageState extends ConsumerState<SongsPage> {
   String keyword = '';
   final selected = <int>{};
+  bool batchMode = false;
 
   @override
   Widget build(BuildContext context) {
@@ -57,21 +57,29 @@ class _SongsPageState extends ConsumerState<SongsPage> {
           }
           return Column(
             children: [
-              if (selected.isNotEmpty)
+              if (batchMode)
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: Wrap(
                     spacing: 8,
                     children: [
                       FilledButton.tonal(
-                        onPressed: () => _addTags(context),
+                        onPressed: selected.isEmpty ? null : () => _addTags(context, selected.toList()),
                         child: const Text('批量加标签'),
                       ),
                       FilledButton.tonal(
-                        onPressed: () => _addToPlaylist(context),
-                        child: const Text('加入普通歌单'),
+                        onPressed: selected.isEmpty ? null : () => _addToPlaylist(context, selected.toList()),
+                        child: const Text('批量加入歌单'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: selected.isEmpty ? null : () => _confirmBatchDelete(context, repo),
+                        child: const Text('批量删除'),
                       ),
                       Text('${selected.length} 已选'),
+                      TextButton(
+                        onPressed: () => _exitBatchMode(),
+                        child: const Text('完成'),
+                      ),
                     ],
                   ),
                 ),
@@ -82,25 +90,16 @@ class _SongsPageState extends ConsumerState<SongsPage> {
                     final song = list[index];
                     final checked = selected.contains(song.id);
                     return ListTile(
-                      leading: Checkbox(
-                        value: checked,
-                        onChanged: (_) {
-                          setState(() {
-                            if (checked) {
-                              selected.remove(song.id);
-                            } else {
-                              selected.add(song.id);
-                            }
-                          });
-                        },
-                      ),
+                      leading: batchMode
+                          ? Checkbox(
+                              value: checked,
+                              onChanged: (_) => _toggleSelection(song.id),
+                            )
+                          : null,
                       title: Text(song.title),
                       subtitle: Text(song.artist),
-                      onTap: () => _editDialog(context, repo, song),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => repo.deleteSong(song.id),
-                      ),
+                      onTap: () => batchMode ? _toggleSelection(song.id) : _editDialog(context, repo, song),
+                      onLongPress: () => _showSongActions(context, repo, song),
                     );
                   },
                 ),
@@ -225,6 +224,23 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     return null;
   }
 
+  void _toggleSelection(int songId) {
+    setState(() {
+      if (selected.contains(songId)) {
+        selected.remove(songId);
+      } else {
+        selected.add(songId);
+      }
+    });
+  }
+
+  void _exitBatchMode() {
+    setState(() {
+      batchMode = false;
+      selected.clear();
+    });
+  }
+
   Future<void> _editDialog(BuildContext context, SongRepository repo, Song song) async {
     final titleController = TextEditingController(text: song.title);
     final artistController = TextEditingController(text: song.artist);
@@ -254,9 +270,17 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     );
   }
 
-  Future<void> _addTags(BuildContext context) async {
+  Future<void> _addTags(BuildContext context, List<int> songIds) async {
     final tagRepo = ref.read(tagRepoProvider);
     final tagsAsync = await tagRepo.watchAll().first;
+    if (tagsAsync.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂无标签可选')),
+        );
+      }
+      return;
+    }
     int? selectedTagId;
     await showDialog(
       context: context,
@@ -271,7 +295,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
           FilledButton(
             onPressed: () {
               if (selectedTagId != null) {
-                tagRepo.attachSongs(selectedTagId!, selected.toList());
+                tagRepo.attachSongs(selectedTagId!, songIds);
               }
               Navigator.pop(context);
             },
@@ -282,29 +306,222 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     );
   }
 
-  Future<void> _addToPlaylist(BuildContext context) async {
+  Future<void> _addToPlaylist(BuildContext context, List<int> songIds) async {
     final playlistRepo = ref.read(playlistRepoProvider);
-    final playlists = await playlistRepo.watchByType(PlaylistType.normal).first;
+    final normalPlaylists = await playlistRepo.watchByType(PlaylistType.normal).first;
+    final queuePlaylists = await playlistRepo.watchByType(PlaylistType.kQueue).first;
+    if (normalPlaylists.isEmpty && queuePlaylists.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂无可加入的歌单')),
+        );
+      }
+      return;
+    }
     int? selectedPlaylistId;
+    PlaylistType selectedType = PlaylistType.normal;
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('加入歌单'),
-        content: DropdownButtonFormField<int>(
-          items: playlists.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
-          onChanged: (v) => selectedPlaylistId = v,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final playlists = selectedType == PlaylistType.normal ? normalPlaylists : queuePlaylists;
+          return AlertDialog(
+            title: const Text('加入歌单'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<PlaylistType>(
+                  value: selectedType,
+                  items: const [
+                    DropdownMenuItem(value: PlaylistType.normal, child: Text('普通歌单')),
+                    DropdownMenuItem(value: PlaylistType.kQueue, child: Text('KQueue 队列')),
+                  ],
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setDialogState(() {
+                      selectedType = v;
+                      selectedPlaylistId = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  items: playlists.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
+                  onChanged: (v) => selectedPlaylistId = v,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+              FilledButton(
+                onPressed: () async {
+                  if (selectedPlaylistId != null) {
+                    await _handleAddToPlaylist(
+                      playlistRepo,
+                      selectedPlaylistId!,
+                      selectedType,
+                      songIds,
+                    );
+                  }
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('加入'),
+              )
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleAddToPlaylist(
+    PlaylistRepository repo,
+    int playlistId,
+    PlaylistType type,
+    List<int> songIds,
+  ) async {
+    if (type == PlaylistType.normal) {
+      await repo.addSongsToPlaylist(playlistId, songIds);
+      return;
+    }
+    final existing = await repo.queueItems(playlistId).first;
+    var position = existing.length;
+    for (final songId in songIds) {
+      await repo.enqueue(playlistId, songId, position);
+      position += 1;
+    }
+  }
+
+  Future<void> _showSongActions(BuildContext context, SongRepository repo, Song song) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('编辑歌曲'),
+              onTap: () => Navigator.pop(context, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('删除歌曲'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.label_outline),
+              title: const Text('添加标签'),
+              onTap: () => Navigator.pop(context, 'tag'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.queue_music),
+              title: const Text('加入歌单'),
+              onTap: () => Navigator.pop(context, 'playlist'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.select_all),
+              title: const Text('批量操作'),
+              onTap: () => Navigator.pop(context, 'batch'),
+            ),
+          ],
         ),
+      ),
+    );
+    if (action == null) return;
+    if (action == 'edit') {
+      await _editDialog(context, repo, song);
+    } else if (action == 'delete') {
+      await _confirmDelete(context, repo, [song.id]);
+    } else if (action == 'tag') {
+      await _addTags(context, [song.id]);
+    } else if (action == 'playlist') {
+      await _addToPlaylist(context, [song.id]);
+    } else if (action == 'batch') {
+      setState(() {
+        batchMode = true;
+        selected
+          ..clear()
+          ..add(song.id);
+      });
+    }
+  }
+
+  Future<void> _confirmBatchDelete(BuildContext context, SongRepository repo) async {
+    await _confirmDelete(context, repo, selected.toList(), showCountDialog: true);
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    SongRepository repo,
+    List<int> songIds, {
+    bool showCountDialog = false,
+  }) async {
+    final confirmed = await _showConfirmDialog(
+      context,
+      title: '确认删除',
+      message: '确定要删除选中的歌曲吗？',
+    );
+    if (!confirmed) return;
+    int successCount = 0;
+    final errors = <String>[];
+    for (final id in songIds) {
+      try {
+        await repo.deleteSong(id);
+        successCount += 1;
+      } catch (e) {
+        errors.add(e.toString());
+      }
+    }
+    if (errors.isNotEmpty) {
+      if (context.mounted) {
+        await _showErrorDialog(context, '删除失败：${errors.first}');
+      }
+    }
+    if (showCountDialog && context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('删除完成'),
+          content: Text('成功删除 $successCount 首歌曲'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          ],
+        ),
+      );
+      _exitBatchMode();
+    }
+  }
+
+  Future<bool> _showConfirmDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () {
-              if (selectedPlaylistId != null) {
-                playlistRepo.addSongsToPlaylist(selectedPlaylistId!, selected.toList());
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('加入'),
-          )
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _showErrorDialog(BuildContext context, String message) {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('操作失败'),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
         ],
       ),
     );
