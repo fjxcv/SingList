@@ -48,27 +48,57 @@ class SimplePlaylistPage extends ConsumerWidget {
   Future<void> _addSongDialog(
       BuildContext context, PlaylistRepository repo, SongRepository songRepo) async {
     final allSongs = await songRepo.watchAll().first;
-    int? selectedId;
+    String keyword = '';
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加歌曲'),
-        content: DropdownButtonFormField<int>(
-          items: allSongs.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.title} - ${s.artist}'))).toList(),
-          onChanged: (v) => selectedId = v,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () {
-              if (selectedId != null) {
-                repo.addSongsToPlaylist(playlist.id, [selectedId!]);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('添加'),
-          )
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final filtered = keyword.isEmpty
+              ? allSongs
+              : allSongs
+                  .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
+                  .toList();
+          return AlertDialog(
+            title: const Text('添加歌曲'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: '搜索歌曲',
+                  ),
+                  onChanged: (value) => setState(() => keyword = value),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.maxFinite,
+                  height: 300,
+                  child: filtered.isEmpty
+                      ? const Center(child: Text('暂无匹配歌曲'))
+                      : ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final song = filtered[index];
+                            return ListTile(
+                              title: Text(song.title),
+                              subtitle: Text(song.artist),
+                              trailing: const Icon(Icons.add),
+                              onTap: () {
+                                repo.addSongsToPlaylist(playlist.id, [song.id]);
+                                Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+            ],
+          );
+        },
       ),
     );
   }
