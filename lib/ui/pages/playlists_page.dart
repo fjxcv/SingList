@@ -44,7 +44,7 @@ class PlaylistsPage extends ConsumerWidget {
                         subtitle: const Text('不重复'),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline),
-                          onPressed: () => repo.delete(p.id),
+                          onPressed: () => _confirmDeletePlaylist(context, repo, p),
                         ),
                         onTap: () => Navigator.push(
                           context,
@@ -66,7 +66,7 @@ class PlaylistsPage extends ConsumerWidget {
                         subtitle: const Text('允许重复、可拖拽'),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline),
-                          onPressed: () => repo.delete(p.id),
+                          onPressed: () => _confirmDeletePlaylist(context, repo, p),
                         ),
                         onTap: () => Navigator.push(
                           context,
@@ -202,5 +202,39 @@ class PlaylistsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeletePlaylist(
+    BuildContext context,
+    PlaylistRepository repo,
+    Playlist playlist,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除“${playlist.name}”吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await repo.delete(playlist.id);
+    } catch (e) {
+      if (!context.mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('操作失败'),
+          content: Text('删除失败：$e'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          ],
+        ),
+      );
+    }
   }
 }

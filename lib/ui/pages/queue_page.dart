@@ -28,7 +28,7 @@ class QueuePage extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.delete_sweep),
-            onPressed: () => repo.clearQueue(playlist.id),
+            onPressed: () => _confirmClearQueue(context, repo),
           )
         ],
       ),
@@ -55,7 +55,7 @@ class QueuePage extends ConsumerWidget {
                 subtitle: Text(entry.song.artist),
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => repo.removeQueueItem(entry.item.id),
+                  onPressed: () => _confirmRemoveItem(context, repo, entry.item.id),
                 ),
               );
             },
@@ -63,5 +63,69 @@ class QueuePage extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _confirmClearQueue(BuildContext context, PlaylistRepository repo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认清空'),
+        content: const Text('确定要清空该队列吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await repo.clearQueue(playlist.id);
+    } catch (e) {
+      if (!context.mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('操作失败'),
+          content: Text('清空失败：$e'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmRemoveItem(
+    BuildContext context,
+    PlaylistRepository repo,
+    int itemId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除此歌曲吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await repo.removeQueueItem(itemId);
+    } catch (e) {
+      if (!context.mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('操作失败'),
+          content: Text('删除失败：$e'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          ],
+        ),
+      );
+    }
   }
 }
