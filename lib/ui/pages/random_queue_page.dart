@@ -137,7 +137,41 @@ class RandomQueuePage extends ConsumerWidget {
                 onPressed: state.isLoading
                     ? null
                     : () async {
-                        final playlist = await notifier.generateQueue();
+                        final candidates = await notifier.loadCandidates();
+                        if (candidates.isEmpty) {
+                          final playlist = await notifier.generateQueue();
+                          if (playlist == null || !context.mounted) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => QueuePage(playlist: playlist),
+                            ),
+                          );
+                          return;
+                        }
+                        var overrideAvoidRepeat = false;
+                        if (state.avoidRepeat && state.count > candidates.length) {
+                          final proceed = await _showConfirmDialog(
+                            context,
+                            title: '提示',
+                            message: '当前可选歌曲数量不足，无法满足不重复生成，是否继续生成？',
+                          );
+                          if (!proceed) return;
+                          overrideAvoidRepeat = true;
+                        }
+                        if ((!state.avoidRepeat || overrideAvoidRepeat) &&
+                            candidates.length <= 1 &&
+                            state.count > 1) {
+                          final proceed = await _showConfirmDialog(
+                            context,
+                            title: '提示',
+                            message: '当前可选歌曲数量较少，随机生成时可能会出现大量重复，建议适当减少生成数量。',
+                          );
+                          if (!proceed) return;
+                        }
+                        final playlist = await notifier.generateQueue(
+                          avoidRepeatOverride: overrideAvoidRepeat ? false : null,
+                        );
                         if (playlist == null || !context.mounted) return;
                         Navigator.push(
                           context,
@@ -155,5 +189,24 @@ class RandomQueuePage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<bool> _showConfirmDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('继续')),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 }

@@ -24,13 +24,21 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
     final songRepo = ref.watch(songRepoProvider);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.playlist.name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.playlist_add),
-            onPressed: () => _addSongDialog(context, repo, songRepo),
-          )
-        ],
+        title: Text(batchMode ? '已选 ${selectedSongIds.length}' : widget.playlist.name),
+        actions: batchMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: '取消选择',
+                  onPressed: _exitBatchMode,
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.playlist_add),
+                  onPressed: () => _addSongDialog(context, repo, songRepo),
+                )
+              ],
       ),
       body: StreamBuilder(
         stream: repo.songsInPlaylist(widget.playlist.id),
@@ -38,58 +46,65 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final songs = snapshot.data!;
           if (songs.isEmpty) return const Center(child: Text('歌单为空'));
-          return Column(
-            children: [
-              if (batchMode)
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      FilledButton.tonal(
-                        onPressed:
-                            selectedSongIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
-                        child: const Text('删除'),
-                      ),
-                      Text('${selectedSongIds.length} 已选'),
-                      TextButton(
-                        onPressed: _exitBatchMode,
-                        child: const Text('取消'),
-                      ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: songs.length,
-                  itemBuilder: (context, index) {
-                    final song = songs[index];
-                    final checked = selectedSongIds.contains(song.id);
-                    return ListTile(
-                      leading: batchMode
-                          ? Checkbox(
-                              value: checked,
-                              onChanged: (_) => _toggleSelection(song.id),
-                            )
-                          : null,
-                      title: Text(song.title),
-                      subtitle: Text(song.artist),
-                      onTap: () => batchMode ? _toggleSelection(song.id) : null,
-                      onLongPress: () {
-                        if (batchMode) return;
-                        setState(() {
-                          batchMode = true;
-                          selectedSongIds.add(song.id);
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+          return ListView.builder(
+            itemCount: songs.length,
+            itemBuilder: (context, index) {
+              final song = songs[index];
+              final checked = selectedSongIds.contains(song.id);
+              return ListTile(
+                title: Text(song.title),
+                subtitle: Text(song.artist),
+                tileColor:
+                    checked ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35) : null,
+                trailing: batchMode
+                    ? Checkbox(
+                        value: checked,
+                        onChanged: (_) => _toggleSelection(song.id),
+                      )
+                    : null,
+                onTap: () => batchMode ? _toggleSelection(song.id) : null,
+                onLongPress: () {
+                  if (batchMode) return;
+                  setState(() {
+                    batchMode = true;
+                    selectedSongIds.add(song.id);
+                  });
+                },
+              );
+            },
           );
         },
       ),
+      bottomNavigationBar: batchMode
+          ? SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  border: Border(
+                    top: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    FilledButton.tonal(
+                      onPressed:
+                          selectedSongIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
+                      child: const Text('删除'),
+                    ),
+                    Text('${selectedSongIds.length} 已选'),
+                    TextButton(
+                      onPressed: _exitBatchMode,
+                      child: const Text('取消'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 
