@@ -54,7 +54,7 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
                       Text('${selectedSongIds.length} 已选'),
                       TextButton(
                         onPressed: _exitBatchMode,
-                        child: const Text('完成'),
+                        child: const Text('取消'),
                       ),
                     ],
                   ),
@@ -110,77 +110,80 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
               : candidates
                   .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
                   .toList();
+          final maxListHeight = MediaQuery.of(context).size.height * 0.45;
           return AlertDialog(
             title: const Text('添加歌曲'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: '搜索歌曲',
-                  ),
-                  onChanged: (value) => setState(() => keyword = value),
-                ),
-                const SizedBox(height: 12),
-                if (selectedIds.isNotEmpty)
-                  Container(
-                    width: double.maxFinite,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(8),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: '搜索歌曲',
                     ),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: selectedIds
-                          .map((id) => allSongs.firstWhere((song) => song.id == id))
-                          .map(
-                            (song) => Chip(
-                              label: Text(song.title),
-                              onDeleted: () {
-                                setState(() {
-                                  selectedIds.remove(song.id);
-                                });
-                              },
-                            ),
-                          )
-                          .toList(),
-                    ),
+                    onChanged: (value) => setState(() => keyword = value),
                   ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.maxFinite,
-                  height: 300,
-                  child: filtered.isEmpty
-                      ? const Center(child: Text('暂无匹配歌曲'))
-                      : ListView.builder(
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final song = filtered[index];
-                            final selected = selectedIds.contains(song.id);
-                            return ListTile(
-                              title: Text(song.title),
-                              subtitle: Text(song.artist),
-                              trailing: Icon(selected ? Icons.check_circle : Icons.add),
-                              tileColor: selected
-                                  ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3)
-                                  : null,
-                              onTap: () {
-                                setState(() {
-                                  if (selected) {
+                  const SizedBox(height: 12),
+                  if (selectedIds.isNotEmpty)
+                    Container(
+                      width: double.maxFinite,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: selectedIds
+                            .map((id) => allSongs.firstWhere((song) => song.id == id))
+                            .map(
+                              (song) => Chip(
+                                label: Text(song.title),
+                                onDeleted: () {
+                                  setState(() {
                                     selectedIds.remove(song.id);
-                                  } else {
-                                    selectedIds.add(song.id);
-                                  }
-                                });
-                              },
-                            );
-                          },
-                        ),
-                ),
-              ],
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.maxFinite,
+                    height: maxListHeight,
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('暂无匹配歌曲'))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final song = filtered[index];
+                              final selected = selectedIds.contains(song.id);
+                              return ListTile(
+                                title: Text(song.title),
+                                subtitle: Text(song.artist),
+                                trailing: Icon(selected ? Icons.check_circle : Icons.add),
+                                tileColor: selected
+                                    ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3)
+                                    : null,
+                                onTap: () {
+                                  setState(() {
+                                    if (selected) {
+                                      selectedIds.remove(song.id);
+                                    } else {
+                                      selectedIds.add(song.id);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
