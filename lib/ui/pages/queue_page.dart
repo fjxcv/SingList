@@ -354,7 +354,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
       if (anchorIndex == -1) return;
       insertIndex = target.insertBelow ? anchorIndex + 1 : anchorIndex;
     } else {
-      insertIndex = target.position - 1;
+      insertIndex = target.position! - 1;
     }
     if (insertIndex < 0) insertIndex = 0;
     if (insertIndex > remaining.length) insertIndex = remaining.length;
