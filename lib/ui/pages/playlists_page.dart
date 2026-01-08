@@ -8,80 +8,131 @@ import '../../service/kqueue_text_service.dart';
 import 'queue_page.dart';
 import 'simple_playlist_page.dart';
 
-class PlaylistsPage extends ConsumerWidget {
+class PlaylistsPage extends ConsumerStatefulWidget {
   const PlaylistsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlaylistsPage> createState() => _PlaylistsPageState();
+}
+
+class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
+  final selectedIds = <int>{};
+  bool selectionMode = false;
+
+  @override
+  Widget build(BuildContext context) {
     final normal = ref.watch(normalPlaylistsProvider);
     final queues = ref.watch(queuePlaylistsProvider);
     final repo = ref.watch(playlistRepoProvider);
     final textService = ref.watch(kqueueTextServiceProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('歌单 / 队列'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.content_paste),
-            tooltip: '粘贴导入 KQueue',
-            onPressed: () => _importDialog(context, textService),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _createDialog(context, repo),
-          )
-        ],
+        title: Text(selectionMode ? '已选 ${selectedIds.length}' : '歌单 / 队列'),
+        actions: selectionMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: '取消选择',
+                  onPressed: _exitSelectionMode,
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () => _createDialog(context, repo),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.content_paste),
+                  tooltip: '粘贴导入 KQueue',
+                  onPressed: () => _importDialog(context, textService),
+                ),
+              ],
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          const ListTile(title: Text('普通歌单')),
+          _buildSectionHeader(context, '普通歌单'),
           normal.when(
             data: (items) => Column(
               children: items
-                  .map((p) => ListTile(
+                  .map((p) => _buildPlaylistTile(
+                        context,
+                        repo,
+                        p,
                         leading: const Icon(Icons.playlist_play),
-                        title: Text(p.name),
                         subtitle: const Text('不重复'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _confirmDeletePlaylist(context, repo, p),
-                        ),
-                        onLongPress: () => _showPlaylistActions(context, repo, p),
-                        onTap: () => Navigator.push(
+                        onOpen: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => SimplePlaylistPage(playlist: p)),
                         ),
                       ))
                   .toList(),
             ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => ListTile(title: Text('加载失败 $e')),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: LinearProgressIndicator(),
+            ),
+            error: (e, _) => Text('加载失败 $e'),
           ),
-          const ListTile(title: Text('KQueue 队列')),
+          const SizedBox(height: 8),
+          _buildSectionHeader(context, 'KQueue 队列'),
           queues.when(
             data: (items) => Column(
               children: items
-                  .map((p) => ListTile(
+                  .map((p) => _buildPlaylistTile(
+                        context,
+                        repo,
+                        p,
                         leading: const Icon(Icons.queue_music),
-                        title: Text(p.name),
                         subtitle: const Text('允许重复、可拖拽'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _confirmDeletePlaylist(context, repo, p),
-                        ),
-                        onLongPress: () => _showPlaylistActions(context, repo, p),
-                        onTap: () => Navigator.push(
+                        onOpen: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => QueuePage(playlist: p)),
                         ),
                       ))
                   .toList(),
             ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => ListTile(title: Text('加载失败 $e')),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: LinearProgressIndicator(),
+            ),
+            error: (e, _) => Text('加载失败 $e'),
           ),
         ],
       ),
+      bottomNavigationBar: selectionMode
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: selectedIds.isEmpty
+                            ? null
+                            : () => _confirmBatchDelete(context, repo),
+                        child: const Text('删除所选'),
+                      ),
+                      Text('${selectedIds.length} 已选'),
+                      TextButton(
+                        onPressed: _exitSelectionMode,
+                        child: const Text('取消'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -208,40 +259,6 @@ class PlaylistsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmDeletePlaylist(
-    BuildContext context,
-    PlaylistRepository repo,
-    Playlist playlist,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除“${playlist.name}”吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    try {
-      await repo.delete(playlist.id);
-    } catch (e) {
-      if (!context.mounted) return;
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('操作失败'),
-          content: Text('删除失败：$e'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
-          ],
-        ),
-      );
-    }
-  }
-
   Future<void> _showPlaylistActions(
     BuildContext context,
     PlaylistRepository repo,
@@ -258,12 +275,19 @@ class PlaylistsPage extends ConsumerWidget {
               title: const Text('编辑歌单名'),
               onTap: () => Navigator.pop(context, 'rename'),
             ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('批量删除'),
+              onTap: () => Navigator.pop(context, 'batch-delete'),
+            ),
           ],
         ),
       ),
     );
     if (action == 'rename' && context.mounted) {
       await _renamePlaylist(context, repo, playlist);
+    } else if (action == 'batch-delete') {
+      _enterSelectionMode(playlist.id);
     }
   }
 
@@ -296,5 +320,117 @@ class PlaylistsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildPlaylistTile(
+    BuildContext context,
+    PlaylistRepository repo,
+    Playlist playlist, {
+    required Widget leading,
+    required Widget subtitle,
+    required VoidCallback onOpen,
+  }) {
+    final isSelected = selectedIds.contains(playlist.id);
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      color:
+          isSelected ? theme.colorScheme.surfaceVariant.withOpacity(0.5) : theme.colorScheme.surface,
+      child: ListTile(
+        leading: leading,
+        title: Text(playlist.name, style: theme.textTheme.bodyLarge),
+        subtitle: DefaultTextStyle.merge(
+          style: theme.textTheme.bodySmall,
+          child: subtitle,
+        ),
+        trailing: selectionMode
+            ? Checkbox(
+                value: isSelected,
+                onChanged: (_) => _toggleSelection(playlist.id),
+              )
+            : null,
+        onTap: () => selectionMode ? _toggleSelection(playlist.id) : onOpen(),
+        onLongPress: () => selectionMode
+            ? _toggleSelection(playlist.id)
+            : _showPlaylistActions(context, repo, playlist),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  void _toggleSelection(int playlistId) {
+    setState(() {
+      if (selectedIds.contains(playlistId)) {
+        selectedIds.remove(playlistId);
+      } else {
+        selectedIds.add(playlistId);
+      }
+    });
+  }
+
+  void _enterSelectionMode(int playlistId) {
+    setState(() {
+      selectionMode = true;
+      selectedIds
+        ..clear()
+        ..add(playlistId);
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      selectionMode = false;
+      selectedIds.clear();
+    });
+  }
+
+  Future<void> _confirmBatchDelete(BuildContext context, PlaylistRepository repo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除选中的 ${selectedIds.length} 个歌单吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final errors = <String>[];
+    for (final id in selectedIds) {
+      try {
+        await repo.delete(id);
+      } catch (e) {
+        errors.add(e.toString());
+      }
+    }
+    if (!context.mounted) return;
+    if (errors.isNotEmpty) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('操作失败'),
+          content: Text('删除失败：${errors.first}'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          ],
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('删除成功 ${selectedIds.length} 个歌单')),
+    );
+    _exitSelectionMode();
   }
 }

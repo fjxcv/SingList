@@ -31,6 +31,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
       ),
       body: tagsAsync.when(
         data: (tags) => ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: tags.length,
           itemBuilder: (context, index) {
             final tag = tags[index];
@@ -39,39 +40,45 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               stream: repo.songsByTag(tag.id),
               builder: (context, snapshot) {
                 final songs = snapshot.data ?? [];
-                return Column(
-                  children: [
-                    ListTile(
-                      title: Row(
-                        children: [
-                          Expanded(child: Text(tag.name)),
-                          Text('(${songs.length})'),
-                        ],
-                      ),
-                      onTap: () => _toggleExpanded(tag.id),
-                      onLongPress: () => _showTagActions(context, repo, tag),
-                      trailing: IconButton(
-                        icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-                        onPressed: () => _toggleExpanded(tag.id),
-                      ),
-                    ),
-                    if (isExpanded)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: songs
-                              .map(
-                                (song) => ListTile(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(song.title),
-                                  subtitle: Text(song.artist),
-                                ),
-                              )
-                              .toList(),
+                final theme = Theme.of(context);
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Row(
+                          children: [
+                            Expanded(child: Text(tag.name, style: theme.textTheme.bodyLarge)),
+                            Text('(${songs.length})', style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                        onTap: () => _toggleExpanded(tag.id),
+                        onLongPress: () => _showTagActions(context, repo, tag),
+                        trailing: IconButton(
+                          icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                          onPressed: () => _toggleExpanded(tag.id),
                         ),
                       ),
-                  ],
+                      if (isExpanded) ...[
+                        Divider(height: 1, color: theme.dividerColor.withOpacity(0.6)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Column(
+                            children: songs
+                                .map(
+                                  (song) => ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(song.title, style: theme.textTheme.bodyMedium),
+                                    subtitle: Text(song.artist, style: theme.textTheme.bodySmall),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 );
               },
             );
@@ -281,94 +288,10 @@ class _TagsPageState extends ConsumerState<TagsPage> {
   }
 
   Future<void> _removeMultipleSongs(BuildContext context, TagRepository repo, Tag tag) async {
-    final songs = await repo.songsByTag(tag.id).first;
-    if (songs.isEmpty) {
-      if (context.mounted) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('暂无歌曲'),
-            content: const Text('该标签下没有可删除的歌曲。'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
-            ],
-          ),
-        );
-      }
-      return;
-    }
-    final selected = <int>{};
-    String keyword = '';
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) {
-          final filtered = keyword.isEmpty
-              ? songs
-              : songs
-                  .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
-                  .toList();
-          return AlertDialog(
-            title: const Text('批量删除歌曲'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: '搜索歌曲',
-                  ),
-                  onChanged: (value) => setState(() => keyword = value),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.maxFinite,
-                  height: 280,
-                  child: ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final song = filtered[index];
-                      final checked = selected.contains(song.id);
-                      return CheckboxListTile(
-                        value: checked,
-                        title: Text(song.title),
-                        subtitle: Text(song.artist),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        onChanged: (_) {
-                          setState(() {
-                            if (checked) {
-                              selected.remove(song.id);
-                            } else {
-                              selected.add(song.id);
-                            }
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ),
-                if (selected.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text('已选 ${selected.length} 首'),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('取消')),
-              FilledButton(
-                onPressed: selected.isEmpty ? null : () => Navigator.pop(dialogContext, true),
-                child: const Text('删除'),
-              ),
-            ],
-          );
-        },
-      ),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => TagBatchRemovePage(tag: tag)),
     );
-    if (result != true || !context.mounted) return;
-    final confirmed = await _confirmRemoveSongs(context, selected.length);
-    if (!confirmed) return;
-    await repo.detachSongs(tag.id, selected.toList());
   }
 
   Future<bool> _confirmRemoveSongs(BuildContext context, int count) async {
@@ -384,5 +307,145 @@ class _TagsPageState extends ConsumerState<TagsPage> {
       ),
     );
     return confirmed ?? false;
+  }
+}
+
+class TagBatchRemovePage extends ConsumerStatefulWidget {
+  final Tag tag;
+  const TagBatchRemovePage({super.key, required this.tag});
+
+  @override
+  ConsumerState<TagBatchRemovePage> createState() => _TagBatchRemovePageState();
+}
+
+class _TagBatchRemovePageState extends ConsumerState<TagBatchRemovePage> {
+  final selectedIds = <int>{};
+  String keyword = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = ref.watch(tagRepoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(selectedIds.isEmpty ? '批量删除歌曲' : '已选 ${selectedIds.length}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: '取消选择',
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+      body: StreamBuilder<List<Song>>(
+        stream: repo.songsByTag(widget.tag.id),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final songs = snapshot.data!;
+          if (songs.isEmpty) {
+            return const Center(child: Text('该标签下没有可删除的歌曲'));
+          }
+          final filtered = keyword.isEmpty
+              ? songs
+              : songs
+                  .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
+                  .toList();
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: TextField(
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: '搜索歌曲',
+                  ),
+                  onChanged: (value) => setState(() => keyword = value),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final song = filtered[index];
+                    final checked = selectedIds.contains(song.id);
+                    return ListTile(
+                      title: Text(song.title),
+                      subtitle: Text(song.artist),
+                      tileColor: checked
+                          ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35)
+                          : null,
+                      trailing: Checkbox(
+                        value: checked,
+                        onChanged: (_) => _toggleSelection(song.id),
+                      ),
+                      onTap: () => _toggleSelection(song.id),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+            border: Border(
+              top: BorderSide(color: Theme.of(context).dividerColor),
+            ),
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton.tonal(
+                onPressed: selectedIds.isEmpty ? null : () => _confirmBatchRemove(context, repo),
+                child: const Text('删除'),
+              ),
+              Text('${selectedIds.length} 已选'),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggleSelection(int songId) {
+    setState(() {
+      if (selectedIds.contains(songId)) {
+        selectedIds.remove(songId);
+      } else {
+        selectedIds.add(songId);
+      }
+    });
+  }
+
+  Future<void> _confirmBatchRemove(BuildContext context, TagRepository repo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要从标签中移除 ${selectedIds.length} 首歌曲吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await repo.detachSongs(widget.tag.id, selectedIds.toList());
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已移除 ${selectedIds.length} 首歌曲')),
+    );
+    Navigator.pop(context);
   }
 }
