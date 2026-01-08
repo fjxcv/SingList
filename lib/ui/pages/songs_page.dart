@@ -33,7 +33,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             onPressed: () => _showAddDialog(context, repo),
           ),
           IconButton(
-            icon: const Icon(Icons.upload),
+            icon: const Icon(Icons.content_paste),
             onPressed: () => _showBulkImportDialog(context, repo),
           ),
         ],
