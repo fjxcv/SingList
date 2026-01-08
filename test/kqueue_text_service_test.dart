@@ -137,6 +137,16 @@ class FakePlaylistRepository implements PlaylistRepository {
   Future<void> removeQueueItem(int id) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> rename(int id, String name) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> removeSongsFromPlaylist(int playlistId, List<int> songIds) {
+    throw UnimplementedError();
+  }
 }
 
 void main() {

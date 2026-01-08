@@ -46,6 +46,7 @@ class PlaylistsPage extends ConsumerWidget {
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () => _confirmDeletePlaylist(context, repo, p),
                         ),
+                        onLongPress: () => _showPlaylistActions(context, repo, p),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => SimplePlaylistPage(playlist: p)),
@@ -68,6 +69,7 @@ class PlaylistsPage extends ConsumerWidget {
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () => _confirmDeletePlaylist(context, repo, p),
                         ),
+                        onLongPress: () => _showPlaylistActions(context, repo, p),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => QueuePage(playlist: p)),
@@ -103,7 +105,9 @@ class PlaylistsPage extends ConsumerWidget {
                   controller: controller,
                   maxLines: 6,
                   decoration: const InputDecoration(
-                    labelText: '粘贴文本，每行“歌名 - 歌手”或“歌名/歌手”',
+                    labelText: '粘贴文本',
+                    helperText: '每行“歌名 - 歌手”或“歌名/歌手”',
+                    helperMaxLines: 2,
                   ),
                 ),
                 if (error != null)
@@ -236,5 +240,61 @@ class PlaylistsPage extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  Future<void> _showPlaylistActions(
+    BuildContext context,
+    PlaylistRepository repo,
+    Playlist playlist,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('编辑歌单名'),
+              onTap: () => Navigator.pop(context, 'rename'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'rename' && context.mounted) {
+      await _renamePlaylist(context, repo, playlist);
+    }
+  }
+
+  Future<void> _renamePlaylist(
+    BuildContext context,
+    PlaylistRepository repo,
+    Playlist playlist,
+  ) async {
+    final controller = TextEditingController(text: playlist.name);
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('编辑歌单名'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: '名称'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                repo.rename(playlist.id, name);
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
   }
 }

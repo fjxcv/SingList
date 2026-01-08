@@ -16,7 +16,8 @@ class SongsPage extends ConsumerStatefulWidget {
 
 class _SongsPageState extends ConsumerState<SongsPage> {
   String keyword = '';
-  final selected = <int>{};
+  final selectedIds = <int>{};
+  final selectionOrder = <int>[];
   bool batchMode = false;
 
   @override
@@ -32,7 +33,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             onPressed: () => _showAddDialog(context, repo),
           ),
           IconButton(
-            icon: const Icon(Icons.upload),
+            icon: const Icon(Icons.content_paste),
             onPressed: () => _showBulkImportDialog(context, repo),
           ),
         ],
@@ -59,28 +60,60 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             children: [
               if (batchMode)
                 Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      FilledButton.tonal(
-                        onPressed: selected.isEmpty ? null : () => _addTags(context, selected.toList()),
-                        child: const Text('批量加标签'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: selected.isEmpty ? null : () => _addToPlaylist(context, selected.toList()),
-                        child: const Text('批量加入歌单'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: selected.isEmpty ? null : () => _confirmBatchDelete(context, repo),
-                        child: const Text('批量删除'),
-                      ),
-                      Text('${selected.length} 已选'),
-                      TextButton(
-                        onPressed: () => _exitBatchMode(),
-                        child: const Text('完成'),
-                      ),
-                    ],
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              FilledButton.tonal(
+                                onPressed: selectedIds.isEmpty
+                                    ? null
+                                    : () => _addTags(context, selectionOrder.toList()),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                child: const Text('加标签'),
+                              ),
+                              FilledButton.tonal(
+                                onPressed: selectedIds.isEmpty
+                                    ? null
+                                    : () => _addToPlaylist(context, selectionOrder.toList()),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                child: const Text('加入歌单'),
+                              ),
+                              FilledButton.tonal(
+                                onPressed: selectedIds.isEmpty
+                                    ? null
+                                    : () => _confirmBatchDelete(context, repo),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                child: const Text('删除'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text('${selectedIds.length} 已选'),
+                        TextButton(
+                          onPressed: _exitBatchMode,
+                          child: const Text('取消'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               Expanded(
@@ -88,7 +121,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
                   itemCount: list.length,
                   itemBuilder: (context, index) {
                     final song = list[index];
-                    final checked = selected.contains(song.id);
+                    final checked = selectedIds.contains(song.id);
                     return ListTile(
                       leading: batchMode
                           ? Checkbox(
@@ -226,10 +259,12 @@ class _SongsPageState extends ConsumerState<SongsPage> {
 
   void _toggleSelection(int songId) {
     setState(() {
-      if (selected.contains(songId)) {
-        selected.remove(songId);
+      if (selectedIds.contains(songId)) {
+        selectedIds.remove(songId);
+        selectionOrder.remove(songId);
       } else {
-        selected.add(songId);
+        selectedIds.add(songId);
+        selectionOrder.add(songId);
       }
     });
   }
@@ -237,7 +272,8 @@ class _SongsPageState extends ConsumerState<SongsPage> {
   void _exitBatchMode() {
     setState(() {
       batchMode = false;
-      selected.clear();
+      selectedIds.clear();
+      selectionOrder.clear();
     });
   }
 
@@ -442,7 +478,10 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     } else if (action == 'batch') {
       setState(() {
         batchMode = true;
-        selected
+        selectedIds
+          ..clear()
+          ..add(song.id);
+        selectionOrder
           ..clear()
           ..add(song.id);
       });
@@ -450,7 +489,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
   }
 
   Future<void> _confirmBatchDelete(BuildContext context, SongRepository repo) async {
-    await _confirmDelete(context, repo, selected.toList(), showCountDialog: true);
+    await _confirmDelete(context, repo, selectionOrder.toList(), showCountDialog: true);
   }
 
   Future<void> _confirmDelete(

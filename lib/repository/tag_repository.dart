@@ -1,5 +1,7 @@
 import '../data/db/app_database.dart';
 
+const Set<String> protectedTagNames = {'开嗓', '收尾', '合唱'};
+
 class TagRepository {
   TagRepository(this.db);
 
@@ -9,9 +11,21 @@ class TagRepository {
 
   Future<int> create(String name) => db.tagDao.create(name);
 
-  Future<void> rename(int id, String name) => db.tagDao.rename(id, name);
+  Future<void> rename(int id, String name) async {
+    final tag = await db.tagDao.findById(id);
+    if (tag != null && protectedTagNames.contains(tag.name)) {
+      throw Exception('默认标签不可修改');
+    }
+    await db.tagDao.rename(id, name);
+  }
 
-  Future<void> deleteTag(int id) => db.tagDao.deleteTag(id);
+  Future<void> deleteTag(int id) async {
+    final tag = await db.tagDao.findById(id);
+    if (tag != null && protectedTagNames.contains(tag.name)) {
+      throw Exception('默认标签不可删除');
+    }
+    await db.tagDao.deleteTag(id);
+  }
 
   Future<void> ensurePresetTags(List<String> names) => db.tagDao.ensurePresetTags(names);
 
@@ -21,5 +35,9 @@ class TagRepository {
 
   Future<void> attachSongs(int tagId, List<int> songIds) {
     return db.songTagDao.addTagsToSongs(songIds: songIds, tagIds: [tagId]);
+  }
+
+  Future<void> detachSongs(int tagId, List<int> songIds) {
+    return db.songTagDao.removeTagsFromSongs(songIds: songIds, tagIds: [tagId]);
   }
 }

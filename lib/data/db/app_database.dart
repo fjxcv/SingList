@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   Future<void> seed() async {
-    await tagDao.ensurePresetTags(['开嗓', '气氛', '收尾']);
+    await tagDao.ensurePresetTags(['开嗓', '收尾', '合唱']);
   }
 }
 
@@ -232,6 +232,10 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
     return (select(tags)..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
   }
 
+  Future<Tag?> findById(int id) {
+    return (select(tags)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
+
   Future<Tag?> findByName(String name) {
     return (select(tags)..where((tbl) => tbl.name.equals(name))).getSingleOrNull();
   }
@@ -328,6 +332,12 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
     return (select(playlists)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
+  Future<void> renamePlaylist(int id, String name) {
+    return (update(playlists)..where((tbl) => tbl.id.equals(id))).write(
+      PlaylistsCompanion(name: Value(name)),
+    );
+  }
+
   Stream<List<Song>> songsInPlaylist(int playlistId) {
     final query = select(songs).join([
       innerJoin(playlistSongs, playlistSongs.songId.equalsExp(songs.id)),
@@ -352,6 +362,23 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
           ),
           mode: InsertMode.insertOrIgnore,
         );
+      }
+    });
+  }
+
+  Future<void> removeSongsFromPlaylist(int playlistId, List<int> songIds) async {
+    await transaction(() async {
+      await (delete(playlistSongs)
+            ..where((tbl) => tbl.playlistId.equals(playlistId) & tbl.songId.isIn(songIds)))
+          .go();
+      final remaining = await (select(playlistSongs)
+            ..where((tbl) => tbl.playlistId.equals(playlistId))
+            ..orderBy([(tbl) => OrderingTerm.asc(tbl.position)]))
+          .get();
+      for (var i = 0; i < remaining.length; i++) {
+        await (update(playlistSongs)
+              ..where((tbl) => tbl.id.equals(remaining[i].id)))
+            .write(PlaylistSongsCompanion(position: Value(i)));
       }
     });
   }

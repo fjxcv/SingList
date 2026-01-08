@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import '../data/db/app_database.dart';
 
 class PlaylistRepository {
@@ -25,12 +27,20 @@ class PlaylistRepository {
     return db.playlistDao.addSongsToPlaylist(playlistId, songIds);
   }
 
+  Future<void> removeSongsFromPlaylist(int playlistId, List<int> songIds) {
+    return db.playlistDao.removeSongsFromPlaylist(playlistId, songIds);
+  }
+
   Future<List<Song>> songsInPlaylistSortedByNorm(int playlistId) {
     return db.playlistDao.songsInPlaylistSortedByNorm(playlistId);
   }
 
   Future<Playlist?> findById(int id) {
     return db.playlistDao.findById(id);
+  }
+
+  Future<void> rename(int id, String name) {
+    return db.playlistDao.renamePlaylist(id, name);
   }
 
   Stream<List<QueueItemWithSong>> queueItems(int playlistId) {
@@ -54,8 +64,9 @@ class PlaylistRepository {
   }
 
   Future<Playlist> createQueueWithSongs(List<int> songIds) async {
+    final timestamp = DateFormat('yyyy-MM-dd/HH:mm:ss').format(DateTime.now());
     final queueId = await create(
-      'KQueue ${DateTime.now().toIso8601String()}',
+      timestamp,
       PlaylistType.kQueue,
     );
     for (var i = 0; i < songIds.length; i++) {
