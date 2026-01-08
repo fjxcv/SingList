@@ -105,7 +105,9 @@ class PlaylistsPage extends ConsumerWidget {
                   controller: controller,
                   maxLines: 6,
                   decoration: const InputDecoration(
-                    labelText: '粘贴文本，每行“歌名 - 歌手”或“歌名/歌手”',
+                    labelText: '粘贴文本',
+                    helperText: '每行“歌名 - 歌手”或“歌名/歌手”',
+                    helperMaxLines: 2,
                   ),
                 ),
                 if (error != null)
