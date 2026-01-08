@@ -49,7 +49,7 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
                       FilledButton.tonal(
                         onPressed:
                             selectedSongIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
-                        child: const Text('批量删除'),
+                        child: const Text('删除'),
                       ),
                       Text('${selectedSongIds.length} 已选'),
                       TextButton(

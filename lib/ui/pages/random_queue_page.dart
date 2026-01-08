@@ -87,7 +87,7 @@ class RandomQueuePage extends ConsumerWidget {
                     Expanded(
                       child: SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('本次尽量不重复'),
+                        title: const Text('歌曲不重复出现'),
                         value: state.avoidRepeat,
                         onChanged: notifier.updateAvoidRepeat,
                       ),
@@ -100,7 +100,7 @@ class RandomQueuePage extends ConsumerWidget {
                       value: state.warmupEnabled,
                       onChanged: notifier.updateWarmupEnabled,
                     ),
-                    const Text('开嗓前插 N 首'),
+                    const Text('随机开嗓曲'),
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 56,

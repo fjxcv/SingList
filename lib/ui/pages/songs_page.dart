@@ -82,7 +82,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
                                   minimumSize: const Size(0, 32),
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                 ),
-                                child: const Text('批量加标签'),
+                                child: const Text('加标签'),
                               ),
                               FilledButton.tonal(
                                 onPressed: selectedIds.isEmpty
