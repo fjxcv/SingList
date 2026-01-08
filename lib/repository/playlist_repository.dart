@@ -27,6 +27,10 @@ class PlaylistRepository {
     return db.playlistDao.addSongsToPlaylist(playlistId, songIds);
   }
 
+  Future<void> removeSongsFromPlaylist(int playlistId, List<int> songIds) {
+    return db.playlistDao.removeSongsFromPlaylist(playlistId, songIds);
+  }
+
   Future<List<Song>> songsInPlaylistSortedByNorm(int playlistId) {
     return db.playlistDao.songsInPlaylistSortedByNorm(playlistId);
   }

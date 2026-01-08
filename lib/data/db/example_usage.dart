@@ -2,7 +2,7 @@ import 'app_database.dart';
 
 Future<void> exampleUsage(AppDatabase db) async {
   // 确保预置标签存在
-  await db.tagDao.ensurePresetTags(['开嗓', '气氛', '收尾']);
+  await db.tagDao.ensurePresetTags(['开嗓', '收尾', '合唱']);
 
   // 歌曲去重写入：已有则返回原 ID
   final songId = await db.songDao.upsertByTitleArtist('稻香', '周杰伦');
