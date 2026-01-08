@@ -24,6 +24,9 @@ class BrushGeneratorState {
     this.warmupEnabled = true,
     this.warmupCount = 2,
     this.inBrushMode = false,
+    this.warmupSongIds = const {},
+    this.warmupSkippedIds = const {},
+    this.warmupSongs = const [],
   });
 
   final BrushSourceType sourceType;
@@ -38,6 +41,9 @@ class BrushGeneratorState {
   final bool warmupEnabled;
   final int warmupCount;
   final bool inBrushMode;
+  final Set<int> warmupSongIds;
+  final Set<int> warmupSkippedIds;
+  final List<Song> warmupSongs;
 
   Song? get currentSong =>
       currentIndex < songs.length ? songs[currentIndex] : null;
@@ -57,6 +63,9 @@ class BrushGeneratorState {
     bool? warmupEnabled,
     int? warmupCount,
     bool? inBrushMode,
+    Set<int>? warmupSongIds,
+    Set<int>? warmupSkippedIds,
+    List<Song>? warmupSongs,
   }) {
     return BrushGeneratorState(
       sourceType: sourceType ?? this.sourceType,
@@ -71,6 +80,9 @@ class BrushGeneratorState {
       warmupEnabled: warmupEnabled ?? this.warmupEnabled,
       warmupCount: warmupCount ?? this.warmupCount,
       inBrushMode: inBrushMode ?? this.inBrushMode,
+      warmupSongIds: warmupSongIds ?? this.warmupSongIds,
+      warmupSkippedIds: warmupSkippedIds ?? this.warmupSkippedIds,
+      warmupSongs: warmupSongs ?? this.warmupSongs,
     );
   }
 }
@@ -136,6 +148,8 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
         );
         return;
       }
+      final warmupSongs = await _loadWarmupSongs();
+      final warmupSongIds = warmupSongs.map((s) => s.id).toSet();
       state = state.copyWith(
         songs: songs,
         currentIndex: 0,
@@ -143,6 +157,9 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
         likes: const [],
         isLoading: false,
         error: null,
+        warmupSongs: warmupSongs,
+        warmupSongIds: warmupSongIds,
+        warmupSkippedIds: const {},
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: '$e');
@@ -152,31 +169,49 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   void markFavorite() {
     final song = state.currentSong;
     if (song == null) return;
+    final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds);
+    if (state.warmupSongIds.contains(song.id)) {
+      warmupSkippedIds.remove(song.id);
+    }
     final updatedFavorites = [...state.favorites, song];
     state = state.copyWith(
       favorites: updatedFavorites,
       currentIndex: state.currentIndex + 1,
+      warmupSkippedIds: warmupSkippedIds,
     );
   }
 
   void markLike() {
     final song = state.currentSong;
     if (song == null) return;
+    final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds);
+    if (state.warmupSongIds.contains(song.id)) {
+      warmupSkippedIds.remove(song.id);
+    }
     final updatedLikes = [...state.likes, song];
     state = state.copyWith(
       likes: updatedLikes,
       currentIndex: state.currentIndex + 1,
+      warmupSkippedIds: warmupSkippedIds,
     );
   }
 
   void skip() {
     if (state.currentSong == null) return;
+    final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds);
+    final song = state.currentSong!;
+    if (state.warmupSongIds.contains(song.id)) {
+      warmupSkippedIds.add(song.id);
+    }
     state = state.copyWith(currentIndex: state.currentIndex + 1);
+    if (warmupSkippedIds.length != state.warmupSkippedIds.length) {
+      state = state.copyWith(warmupSkippedIds: warmupSkippedIds);
+    }
   }
 
-  Future<Playlist?> createQueue() async {
+  Future<Playlist?> createQueue({List<Song> selectedWarmups = const []}) async {
     final playlistRepo = ref.read(playlistRepoProvider);
-    final songs = await _mergeOrderWithWarmup();
+    final songs = await _mergeOrderWithWarmup(selectedWarmups: selectedWarmups);
     if (songs.isEmpty) return null;
     return playlistRepo.createQueueWithSongs(
       songs.map((s) => s.id).toList(),
@@ -192,6 +227,9 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
       likes: const [],
       isLoading: false,
       error: null,
+      warmupSongIds: const {},
+      warmupSkippedIds: const {},
+      warmupSongs: const [],
     );
   }
 
@@ -211,27 +249,84 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
     }
   }
 
-  Future<List<Song>> _mergeOrderWithWarmup() async {
+  Future<List<Song>> _mergeOrderWithWarmup({List<Song> selectedWarmups = const []}) async {
     final ordered = <Song>[];
     if (state.warmupEnabled && state.warmupCount > 0) {
-      ordered.addAll(await _pickWarmups());
+      if (selectedWarmups.isNotEmpty) {
+        ordered.addAll(selectedWarmups.take(state.warmupCount));
+      } else {
+        ordered.addAll(await _pickWarmups());
+      }
     }
-    ordered.addAll(state.favorites);
-    ordered.addAll(state.likes);
+    final warmupIds = ordered.map((e) => e.id).toSet();
+    ordered.addAll(state.favorites.where((s) => !warmupIds.contains(s.id)));
+    ordered.addAll(state.likes.where((s) => !warmupIds.contains(s.id)));
     return ordered;
   }
 
   Future<List<Song>> _pickWarmups() async {
+    if (!state.warmupEnabled || state.warmupCount <= 0) return [];
+    final forced = state.favorites.where((s) => state.warmupSongIds.contains(s.id)).toList();
+    final liked = state.likes
+        .where((s) => state.warmupSongIds.contains(s.id) && !state.warmupSkippedIds.contains(s.id))
+        .toList();
+    final remaining = state.warmupCount - forced.length;
+    final selected = <Song>[
+      ...forced,
+    ];
+    if (remaining > 0 && liked.isNotEmpty) {
+      final pool = List<Song>.from(liked);
+      pool.shuffle(Random());
+      selected.addAll(pool.take(min(remaining, pool.length)));
+    }
+    return selected;
+  }
+
+  Future<List<Song>> _loadWarmupSongs() async {
     final tagRepo = ref.read(tagRepoProvider);
     final warmupTag = await tagRepo.findByName('开嗓');
     if (warmupTag == null) return [];
-    final candidates = await ref
-        .read(songRepoProvider)
-        .fetchSongsByTagSorted(warmupTag.id);
-    if (candidates.isEmpty) return [];
-    final rng = Random();
-    final pool = List<Song>.from(candidates);
-    pool.shuffle(rng);
-    return pool.take(state.warmupCount).toList();
+    return ref.read(songRepoProvider).fetchSongsByTagSorted(warmupTag.id);
   }
+
+  WarmupPlan buildWarmupPlan() {
+    final forced = state.favorites.where((s) => state.warmupSongIds.contains(s.id)).toList();
+    final liked = state.likes
+        .where((s) => state.warmupSongIds.contains(s.id) && !state.warmupSkippedIds.contains(s.id))
+        .where((s) => !forced.any((f) => f.id == s.id))
+        .toList();
+    final selectedIds = {
+      ...forced.map((s) => s.id),
+      ...liked.map((s) => s.id),
+      ...state.warmupSkippedIds,
+    };
+    final extras = state.warmupSongs.where((s) => !selectedIds.contains(s.id)).toList();
+    return WarmupPlan(
+      requiredCount: state.warmupCount,
+      forced: forced,
+      liked: liked,
+      extras: extras,
+    );
+  }
+
+  List<Song> pickRandomLikedWarmups(List<Song> liked, int count) {
+    if (count <= 0) return [];
+    if (liked.length <= count) return liked;
+    final pool = List<Song>.from(liked)..shuffle(Random());
+    return pool.take(count).toList();
+  }
+}
+
+class WarmupPlan {
+  WarmupPlan({
+    required this.requiredCount,
+    required this.forced,
+    required this.liked,
+    required this.extras,
+  });
+
+  final int requiredCount;
+  final List<Song> forced;
+  final List<Song> liked;
+  final List<Song> extras;
 }

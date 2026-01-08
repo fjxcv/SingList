@@ -53,16 +53,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
           onFavorite: notifier.markFavorite,
           onLike: notifier.markLike,
           onSkip: notifier.skip,
-          onFinish: () async {
-            final playlist = await notifier.createQueue();
-            if (playlist == null || !context.mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => QueuePage(playlist: playlist),
-              ),
-            );
-          },
+          onFinish: () => _handleFinish(context, notifier),
           onBack: () => _handleBack(context, notifier),
         ),
       );
@@ -181,6 +172,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
     if (action == _BrushBackAction.save) {
       final playlist = await notifier.createQueue();
       if (playlist != null && context.mounted) {
+        notifier.exitBrushMode();
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -194,6 +186,187 @@ class _BrushGeneratorTab extends ConsumerWidget {
       }
     }
     notifier.exitBrushMode();
+  }
+
+  Future<void> _handleFinish(
+    BuildContext context,
+    BrushGeneratorNotifier notifier,
+  ) async {
+    List<Song> warmups = [];
+    if (notifier.state.warmupEnabled && notifier.state.warmupCount > 0) {
+      final plan = notifier.buildWarmupPlan();
+      warmups = [...plan.forced];
+      var remaining = plan.requiredCount - warmups.length;
+      if (remaining > 0 && plan.liked.isNotEmpty) {
+        final likedSelected = notifier.pickRandomLikedWarmups(plan.liked, remaining);
+        warmups.addAll(likedSelected);
+        remaining = plan.requiredCount - warmups.length;
+      }
+      if (remaining > 0) {
+        final wantMore = await _confirmWarmupShortage(
+          context,
+          warmups,
+          remaining,
+        );
+        if (wantMore == null) return;
+        if (wantMore) {
+          final extras = await _selectExtraWarmups(context, plan.extras, remaining);
+          if (extras == null) return;
+          warmups.addAll(extras);
+        }
+      }
+    }
+    final playlist = await notifier.createQueue(selectedWarmups: warmups);
+    if (playlist == null || !context.mounted) return;
+    notifier.exitBrushMode();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QueuePage(playlist: playlist),
+      ),
+    );
+  }
+
+  Future<bool?> _confirmWarmupShortage(
+    BuildContext context,
+    List<Song> selected,
+    int missing,
+  ) {
+    final selectedNames = selected.isEmpty
+        ? '暂未选择'
+        : selected.map((s) => s.title).join('、');
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('开嗓歌曲不足'),
+        content: Text('已选择：$selectedNames\n还差 $missing 首，是否从开嗓标签中补选？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('否')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('是')),
+        ],
+      ),
+    );
+  }
+
+  Future<List<Song>?> _selectExtraWarmups(
+    BuildContext context,
+    List<Song> candidates,
+    int needed,
+  ) async {
+    if (candidates.isEmpty) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('暂无可选歌曲'),
+          content: const Text('开嗓标签下没有更多歌曲可选。'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          ],
+        ),
+      );
+      return [];
+    }
+    final selectedIds = <int>{};
+    String keyword = '';
+    final result = await showDialog<List<Song>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          final filtered = keyword.isEmpty
+              ? candidates
+              : candidates
+                  .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
+                  .toList();
+          final selectedSongs = candidates.where((s) => selectedIds.contains(s.id)).toList();
+          return AlertDialog(
+            title: Text('补选开嗓歌曲 ($needed 首)'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: '搜索歌曲',
+                  ),
+                  onChanged: (value) => setState(() => keyword = value),
+                ),
+                const SizedBox(height: 12),
+                if (selectedSongs.isNotEmpty)
+                  Container(
+                    width: double.maxFinite,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: selectedSongs
+                          .map(
+                            (song) => Chip(
+                              label: Text(song.title),
+                              onDeleted: () {
+                                setState(() {
+                                  selectedIds.remove(song.id);
+                                });
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.maxFinite,
+                  height: 280,
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final song = filtered[index];
+                      final checked = selectedIds.contains(song.id);
+                      return CheckboxListTile(
+                        value: checked,
+                        title: Text(song.title),
+                        subtitle: Text(song.artist),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (value) {
+                          setState(() {
+                            if (checked) {
+                              selectedIds.remove(song.id);
+                            } else if (selectedIds.length < needed) {
+                              selectedIds.add(song.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('已选 ${selectedIds.length}/$needed'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
+              FilledButton(
+                onPressed: selectedIds.length == needed
+                    ? () => Navigator.pop(
+                          dialogContext,
+                          candidates.where((s) => selectedIds.contains(s.id)).toList(),
+                        )
+                    : null,
+                child: const Text('确认'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    return result;
   }
 }
 
