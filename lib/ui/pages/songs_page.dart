@@ -60,31 +60,60 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             children: [
               if (batchMode)
                 Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      FilledButton.tonal(
-                        onPressed:
-                            selectedIds.isEmpty ? null : () => _addTags(context, selectionOrder.toList()),
-                        child: const Text('批量加标签'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: selectedIds.isEmpty
-                            ? null
-                            : () => _addToPlaylist(context, selectionOrder.toList()),
-                        child: const Text('批量加入歌单'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: selectedIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
-                        child: const Text('批量删除'),
-                      ),
-                      Text('${selectedIds.length} 已选'),
-                      TextButton(
-                        onPressed: () => _exitBatchMode(),
-                        child: const Text('完成'),
-                      ),
-                    ],
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              FilledButton.tonal(
+                                onPressed: selectedIds.isEmpty
+                                    ? null
+                                    : () => _addTags(context, selectionOrder.toList()),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                child: const Text('批量加标签'),
+                              ),
+                              FilledButton.tonal(
+                                onPressed: selectedIds.isEmpty
+                                    ? null
+                                    : () => _addToPlaylist(context, selectionOrder.toList()),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                child: const Text('加入歌单'),
+                              ),
+                              FilledButton.tonal(
+                                onPressed: selectedIds.isEmpty
+                                    ? null
+                                    : () => _confirmBatchDelete(context, repo),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                child: const Text('删除'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text('${selectedIds.length} 已选'),
+                        TextButton(
+                          onPressed: _exitBatchMode,
+                          child: const Text('取消'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               Expanded(
