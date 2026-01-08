@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -159,9 +161,12 @@ class RandomQueuePage extends ConsumerWidget {
                           if (!proceed) return;
                           overrideAvoidRepeat = true;
                         }
-                        if ((!state.avoidRepeat || overrideAvoidRepeat) &&
-                            candidates.length <= 1 &&
-                            state.count > 1) {
+                        final allowRepeats = !state.avoidRepeat || overrideAvoidRepeat;
+                        if (allowRepeats &&
+                            _needsHighRepeatWarning(
+                              candidateCount: candidates.length,
+                              requestCount: state.count,
+                            )) {
                           final proceed = await _showConfirmDialog(
                             context,
                             title: '提示',
@@ -208,5 +213,18 @@ class RandomQueuePage extends ConsumerWidget {
       ),
     );
     return confirmed ?? false;
+  }
+
+  bool _needsHighRepeatWarning({
+    required int candidateCount,
+    required int requestCount,
+  }) {
+    if (candidateCount <= 0 || requestCount <= 0) return false;
+    if (requestCount > candidateCount * 3) {
+      return true;
+    }
+    final lambda = requestCount / candidateCount;
+    final expectedRepeatedSongs = candidateCount * (1 - exp(-lambda) * (1 + lambda));
+    return expectedRepeatedSongs >= 3;
   }
 }
