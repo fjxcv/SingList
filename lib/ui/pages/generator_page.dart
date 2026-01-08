@@ -17,7 +17,6 @@ class GeneratorPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          toolbarHeight: 48,
           title: const Text('生成 KQueue'),
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(40),

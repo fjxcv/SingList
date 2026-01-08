@@ -24,9 +24,14 @@ class _SongsPageState extends ConsumerState<SongsPage> {
   Widget build(BuildContext context) {
     final songsAsync = ref.watch(songsProvider);
     final repo = ref.watch(songRepoProvider);
+    final totalCount = songsAsync.maybeWhen(data: (songs) => songs.length, orElse: () => null);
     return Scaffold(
       appBar: AppBar(
-        title: Text(batchMode ? '已选 ${selectedIds.length}' : '歌曲库'),
+        title: Text(
+          batchMode
+              ? '已选 ${selectedIds.length}'
+              : '歌曲库${totalCount == null ? '' : ' ($totalCount)'}',
+        ),
         actions: batchMode
             ? [
                 IconButton(
