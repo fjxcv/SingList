@@ -70,24 +70,30 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             return const Center(child: Text('暂无歌曲，点击右上角新增'));
           }
           return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: list.length,
             itemBuilder: (context, index) {
               final song = list[index];
               final checked = selectedIds.contains(song.id);
-              return ListTile(
-                title: Text(song.title),
-                subtitle: Text(song.artist),
-                tileColor:
-                    checked ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35) : null,
-                trailing: batchMode
-                    ? Checkbox(
-                        value: checked,
-                        onChanged: (_) => _toggleSelection(song.id),
-                      )
-                    : null,
-                onTap: () => batchMode ? _toggleSelection(song.id) : _editDialog(context, repo, song),
-                onLongPress: () =>
-                    batchMode ? _toggleSelection(song.id) : _showSongActions(context, repo, song),
+              final theme = Theme.of(context);
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                color: checked
+                    ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
+                    : theme.colorScheme.surface,
+                child: ListTile(
+                  title: Text(song.title, style: theme.textTheme.bodyLarge),
+                  subtitle: Text(song.artist, style: theme.textTheme.bodySmall),
+                  trailing: batchMode
+                      ? Checkbox(
+                          value: checked,
+                          onChanged: (_) => _toggleSelection(song.id),
+                        )
+                      : null,
+                  onTap: () => batchMode ? _toggleSelection(song.id) : _editDialog(context, repo, song),
+                  onLongPress: () =>
+                      batchMode ? _toggleSelection(song.id) : _showSongActions(context, repo, song),
+                ),
               );
             },
           );
@@ -97,53 +103,56 @@ class _SongsPageState extends ConsumerState<SongsPage> {
       ),
       bottomNavigationBar: batchMode
           ? SafeArea(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
-                  border: Border(
-                    top: BorderSide(color: Theme.of(context).dividerColor),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
-                ),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    FilledButton.tonal(
-                      onPressed:
-                          selectedIds.isEmpty ? null : () => _addTags(context, selectionOrder.toList()),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: selectedIds.isEmpty
+                            ? null
+                            : () => _addTags(context, selectionOrder.toList()),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        child: const Text('加标签'),
                       ),
-                      child: const Text('加标签'),
-                    ),
-                    FilledButton.tonal(
-                      onPressed: selectedIds.isEmpty
-                          ? null
-                          : () => _addToPlaylist(context, selectionOrder.toList()),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      FilledButton.tonal(
+                        onPressed: selectedIds.isEmpty
+                            ? null
+                            : () => _addToPlaylist(context, selectionOrder.toList()),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        child: const Text('加入歌单'),
                       ),
-                      child: const Text('加入歌单'),
-                    ),
-                    FilledButton.tonal(
-                      onPressed:
-                          selectedIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      FilledButton.tonal(
+                        onPressed:
+                            selectedIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        child: const Text('删除'),
                       ),
-                      child: const Text('删除'),
-                    ),
-                    Text('${selectedIds.length} 已选'),
-                    TextButton(
-                      onPressed: _exitBatchMode,
-                      child: const Text('取消'),
-                    ),
-                  ],
+                      Text('${selectedIds.length} 已选'),
+                      TextButton(
+                        onPressed: _exitBatchMode,
+                        child: const Text('取消'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )

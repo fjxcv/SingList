@@ -49,8 +49,9 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
               ],
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          const ListTile(title: Text('普通歌单')),
+          _buildSectionHeader(context, '普通歌单'),
           normal.when(
             data: (items) => Column(
               children: items
@@ -67,10 +68,14 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
                       ))
                   .toList(),
             ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => ListTile(title: Text('加载失败 $e')),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: LinearProgressIndicator(),
+            ),
+            error: (e, _) => Text('加载失败 $e'),
           ),
-          const ListTile(title: Text('KQueue 队列')),
+          const SizedBox(height: 8),
+          _buildSectionHeader(context, 'KQueue 队列'),
           queues.when(
             data: (items) => Column(
               children: items
@@ -87,38 +92,43 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
                       ))
                   .toList(),
             ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => ListTile(title: Text('加载失败 $e')),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: LinearProgressIndicator(),
+            ),
+            error: (e, _) => Text('加载失败 $e'),
           ),
         ],
       ),
       bottomNavigationBar: selectionMode
           ? SafeArea(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
-                  border: Border(
-                    top: BorderSide(color: Theme.of(context).dividerColor),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
-                ),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    FilledButton.tonal(
-                      onPressed: selectedIds.isEmpty
-                          ? null
-                          : () => _confirmBatchDelete(context, repo),
-                      child: const Text('删除所选'),
-                    ),
-                    Text('${selectedIds.length} 已选'),
-                    TextButton(
-                      onPressed: _exitSelectionMode,
-                      child: const Text('取消'),
-                    ),
-                  ],
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: selectedIds.isEmpty
+                            ? null
+                            : () => _confirmBatchDelete(context, repo),
+                        child: const Text('删除所选'),
+                      ),
+                      Text('${selectedIds.length} 已选'),
+                      TextButton(
+                        onPressed: _exitSelectionMode,
+                        child: const Text('取消'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -321,22 +331,39 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
     required VoidCallback onOpen,
   }) {
     final isSelected = selectedIds.contains(playlist.id);
-    return ListTile(
-      leading: leading,
-      title: Text(playlist.name),
-      subtitle: subtitle,
-      tileColor:
-          isSelected ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35) : null,
-      trailing: selectionMode
-          ? Checkbox(
-              value: isSelected,
-              onChanged: (_) => _toggleSelection(playlist.id),
-            )
-          : null,
-      onTap: () => selectionMode ? _toggleSelection(playlist.id) : onOpen(),
-      onLongPress: () => selectionMode
-          ? _toggleSelection(playlist.id)
-          : _showPlaylistActions(context, repo, playlist),
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      color:
+          isSelected ? theme.colorScheme.surfaceVariant.withOpacity(0.5) : theme.colorScheme.surface,
+      child: ListTile(
+        leading: leading,
+        title: Text(playlist.name, style: theme.textTheme.bodyLarge),
+        subtitle: DefaultTextStyle.merge(
+          style: theme.textTheme.bodySmall,
+          child: subtitle,
+        ),
+        trailing: selectionMode
+            ? Checkbox(
+                value: isSelected,
+                onChanged: (_) => _toggleSelection(playlist.id),
+              )
+            : null,
+        onTap: () => selectionMode ? _toggleSelection(playlist.id) : onOpen(),
+        onLongPress: () => selectionMode
+            ? _toggleSelection(playlist.id)
+            : _showPlaylistActions(context, repo, playlist),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
   }
 

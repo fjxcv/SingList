@@ -31,6 +31,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
       ),
       body: tagsAsync.when(
         data: (tags) => ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: tags.length,
           itemBuilder: (context, index) {
             final tag = tags[index];
@@ -39,39 +40,45 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               stream: repo.songsByTag(tag.id),
               builder: (context, snapshot) {
                 final songs = snapshot.data ?? [];
-                return Column(
-                  children: [
-                    ListTile(
-                      title: Row(
-                        children: [
-                          Expanded(child: Text(tag.name)),
-                          Text('(${songs.length})'),
-                        ],
-                      ),
-                      onTap: () => _toggleExpanded(tag.id),
-                      onLongPress: () => _showTagActions(context, repo, tag),
-                      trailing: IconButton(
-                        icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-                        onPressed: () => _toggleExpanded(tag.id),
-                      ),
-                    ),
-                    if (isExpanded)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: songs
-                              .map(
-                                (song) => ListTile(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(song.title),
-                                  subtitle: Text(song.artist),
-                                ),
-                              )
-                              .toList(),
+                final theme = Theme.of(context);
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Row(
+                          children: [
+                            Expanded(child: Text(tag.name, style: theme.textTheme.bodyLarge)),
+                            Text('(${songs.length})', style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                        onTap: () => _toggleExpanded(tag.id),
+                        onLongPress: () => _showTagActions(context, repo, tag),
+                        trailing: IconButton(
+                          icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                          onPressed: () => _toggleExpanded(tag.id),
                         ),
                       ),
-                  ],
+                      if (isExpanded) ...[
+                        Divider(height: 1, color: theme.dividerColor.withOpacity(0.6)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Column(
+                            children: songs
+                                .map(
+                                  (song) => ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(song.title, style: theme.textTheme.bodyMedium),
+                                    subtitle: Text(song.artist, style: theme.textTheme.bodySmall),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 );
               },
             );
