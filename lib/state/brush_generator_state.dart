@@ -125,7 +125,12 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   }
 
   void updateWarmupCount(int value) {
-    state = state.copyWith(warmupCount: value);
+    final clamped = value < 0
+        ? 0
+        : value > 20
+            ? 20
+            : value;
+    state = state.copyWith(warmupCount: clamped);
   }
 
   Future<void> loadSongs() async {
@@ -164,6 +169,11 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
     } catch (e) {
       state = state.copyWith(isLoading: false, error: '$e');
     }
+  }
+
+  Future<int> fetchWarmupTagCount() async {
+    final warmupSongs = await _loadWarmupSongs();
+    return warmupSongs.length;
   }
 
   void markFavorite() {
@@ -298,7 +308,6 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
     final selectedIds = {
       ...forced.map((s) => s.id),
       ...liked.map((s) => s.id),
-      ...state.warmupSkippedIds,
     };
     final extras = state.warmupSongs.where((s) => !selectedIds.contains(s.id)).toList();
     return WarmupPlan(

@@ -16,12 +16,16 @@ class GeneratorPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
+          toolbarHeight: 48,
           title: const Text('生成 KQueue'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: '刷歌模式'),
-              Tab(text: '随机生成'),
-            ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(40),
+            child: TabBar(
+              tabs: [
+                Tab(text: '刷歌模式'),
+                Tab(text: '随机生成'),
+              ],
+            ),
           ),
         ),
         body: const TabBarView(
@@ -84,7 +88,8 @@ class _BrushGeneratorTab extends ConsumerWidget {
                 onSelected: (_) => notifier.updateSourceType(BrushSourceType.playlist),
               ),
               FilledButton.icon(
-                onPressed: state.isLoading ? null : () => notifier.loadSongs(),
+                onPressed:
+                    state.isLoading ? null : () => _handleStartBrush(context, notifier),
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('开始刷歌'),
               ),
@@ -120,11 +125,13 @@ class _BrushGeneratorTab extends ConsumerWidget {
               SizedBox(
                 width: 72,
                 child: TextFormField(
+                  key: ValueKey('warmup-${state.warmupCount}'),
                   initialValue: state.warmupCount.toString(),
                   decoration: const InputDecoration(labelText: '数量'),
                   keyboardType: TextInputType.number,
                   onChanged: (v) {
-                    notifier.updateWarmupCount(int.parse(v.trim()));
+                    final value = int.tryParse(v.trim()) ?? 0;
+                    notifier.updateWarmupCount(value);
                   },
                 ),
               ),
@@ -141,6 +148,30 @@ class _BrushGeneratorTab extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _handleStartBrush(
+    BuildContext context,
+    BrushGeneratorNotifier notifier,
+  ) async {
+    final state = notifier.state;
+    if (state.warmupEnabled && state.warmupCount > 0) {
+      final count = await notifier.fetchWarmupTagCount();
+      if (count < state.warmupCount && context.mounted) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('开嗓歌曲不足'),
+            content: Text('需要 ${state.warmupCount} 首，当前只有 $count 首。'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+            ],
+          ),
+        );
+        return;
+      }
+    }
+    await notifier.loadSongs();
   }
 
   Future<void> _handleBack(
@@ -208,16 +239,23 @@ class _BrushGeneratorTab extends ConsumerWidget {
           warmups,
           remaining,
         );
-        if (wantMore == null) return;
-        if (wantMore) {
-          final extras = await _selectExtraWarmups(context, plan.extras, remaining);
-          if (extras == null) return;
-          warmups.addAll(extras);
+        if (wantMore == true) {
+          final candidates = notifier.state.warmupSongs
+              .where((song) => warmups.every((selected) => selected.id != song.id))
+              .toList();
+          final extras = await _selectExtraWarmups(context, candidates, remaining);
+          if (extras != null) {
+            warmups.addAll(extras);
+          }
         }
       }
     }
     final playlist = await notifier.createQueue(selectedWarmups: warmups);
-    if (playlist == null || !context.mounted) return;
+    if (playlist == null) {
+      notifier.exitBrushMode();
+      return;
+    }
+    if (!context.mounted) return;
     notifier.exitBrushMode();
     Navigator.push(
       context,
@@ -335,7 +373,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                           setState(() {
                             if (checked) {
                               selectedIds.remove(song.id);
-                            } else if (selectedIds.length < needed) {
+                            } else {
                               selectedIds.add(song.id);
                             }
                           });
@@ -353,12 +391,18 @@ class _BrushGeneratorTab extends ConsumerWidget {
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
               FilledButton(
-                onPressed: selectedIds.length == needed
-                    ? () => Navigator.pop(
-                          dialogContext,
-                          candidates.where((s) => selectedIds.contains(s.id)).toList(),
-                        )
-                    : null,
+                onPressed: () {
+                  if (selectedIds.length != needed) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(content: Text('需要补选 $needed 首，当前已选 ${selectedIds.length} 首')),
+                    );
+                    return;
+                  }
+                  Navigator.pop(
+                    dialogContext,
+                    candidates.where((s) => selectedIds.contains(s.id)).toList(),
+                  );
+                },
                 child: const Text('确认'),
               ),
             ],
