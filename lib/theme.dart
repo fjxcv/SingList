@@ -18,17 +18,20 @@ ThemeData buildTheme(WidgetRef ref) {
   // 选择一组柔和的基色，白底配浅灰紫/灰蓝
   const primaryColor = Color(0xFF1A1A1A); // 接近黑但不纯黑
   const secondaryColor = Color(0xFF757575); // 次文本颜色
-  const surfaceColor = Color(0xFFF5F5FA); // 非常浅的灰紫/灰蓝
+  const backgroundColor = Color(0xFFF5F6FA); // 页面背景（最浅）
+  const cardColor = Color(0xFFFFFFFF);      // 卡片本体（纯白）
+  const cardBorderColor = Color(0xFFE0E3EB); // 卡片边框（浅灰蓝）
 
   const radiusSmall = 8.0;
   const radiusMedium = 12.0;
 
   final baseScheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFFCBD3E0), // 柔和的浅蓝紫作为种子色
+    seedColor: const Color(0xFFCBD3E0),
     brightness: Brightness.light,
   ).copyWith(
-    background: surfaceColor,
-    surface: surfaceColor,
+    background: backgroundColor,
+    surface: cardColor,
+    surfaceVariant: const Color(0xFFE9ECF4), // 选中态背景
     primary: primaryColor,
     onPrimary: Colors.white,
     onSurface: primaryColor,
@@ -45,15 +48,22 @@ ThemeData buildTheme(WidgetRef ref) {
     useMaterial3: true,
     colorScheme: baseScheme,
     textTheme: textTheme,
-    scaffoldBackgroundColor: surfaceColor,
-    cardTheme: const CardThemeData(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(radiusMedium))),
-      surfaceTintColor: surfaceColor,
-      elevation: 0,
+    scaffoldBackgroundColor: backgroundColor,
+    cardTheme: CardThemeData(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: cardColor,
+      elevation: 0, // 继续保持干净
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(radiusMedium)),
+        side: BorderSide(
+          color: cardBorderColor, // 👈 关键：描边
+          width: 0.8,
+        ),
+      ),
     ),
+
     listTileTheme: const ListTileThemeData(
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     ),
     dividerTheme: DividerThemeData(
       color: baseScheme.onSurface.withOpacity(0.1),
@@ -61,7 +71,7 @@ ThemeData buildTheme(WidgetRef ref) {
     ),
     navigationBarTheme: NavigationBarThemeData(
       height: 64,
-      backgroundColor: surfaceColor,
+      backgroundColor: backgroundColor,
       indicatorColor: baseScheme.surfaceVariant.withOpacity(0.3),
       labelTextStyle: MaterialStateProperty.all(
         textTheme.labelMedium?.copyWith(color: primaryColor),
@@ -84,10 +94,14 @@ ThemeData buildTheme(WidgetRef ref) {
       hintStyle: TextStyle(color: secondaryColor),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: surfaceColor,
+      backgroundColor: backgroundColor,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(color: primaryColor, fontSize: 18, fontWeight: FontWeight.w600),
+      titleTextStyle: TextStyle(
+        color: primaryColor,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
       iconTheme: IconThemeData(color: primaryColor),
     ),
   );
