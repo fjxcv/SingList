@@ -112,10 +112,11 @@ class RandomQueueNotifier extends AutoDisposeNotifier<RandomQueueState> {
     state = state.copyWith(warmupCount: clamped);
   }
 
-  Future<Playlist?> generateQueue() async {
+  Future<Playlist?> generateQueue({bool? avoidRepeatOverride}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final candidates = await _loadSourceSongs();
+      final avoidRepeat = avoidRepeatOverride ?? state.avoidRepeat;
       if (candidates.isEmpty) {
         state = state.copyWith(
           isLoading: false,
@@ -125,14 +126,16 @@ class RandomQueueNotifier extends AutoDisposeNotifier<RandomQueueState> {
       }
 
       final usedIds = <int>{};
-      final warmups = await _pickWarmups(usedIds);
-      if (state.avoidRepeat) {
+      final warmups = await _pickWarmups(usedIds, avoidRepeat: avoidRepeat);
+      if (avoidRepeat) {
         usedIds.addAll(warmups.map((e) => e.id));
       }
 
       final mainSongs = _pickSongs(
         candidates.where((s) => !usedIds.contains(s.id)).toList(),
         state.count,
+        avoidRepeat: avoidRepeat,
+        lastSongId: warmups.isNotEmpty ? warmups.last.id : null,
       );
 
       final all = [...warmups, ...mainSongs];
@@ -155,7 +158,10 @@ class RandomQueueNotifier extends AutoDisposeNotifier<RandomQueueState> {
     }
   }
 
-  Future<List<Song>> _pickWarmups(Set<int> usedIds) async {
+  Future<List<Song>> _pickWarmups(
+    Set<int> usedIds, {
+    required bool avoidRepeat,
+  }) async {
     if (!state.warmupEnabled || state.warmupCount <= 0) return [];
     final warmupTag = await ref.read(tagRepoProvider).findByName('开嗓');
     if (warmupTag == null) return [];
@@ -164,35 +170,73 @@ class RandomQueueNotifier extends AutoDisposeNotifier<RandomQueueState> {
         .fetchSongsByTagSorted(warmupTag.id);
     if (candidates.isEmpty) return [];
     final rng = Random();
-    final pool = state.avoidRepeat
+    final pool = avoidRepeat
         ? candidates.where((s) => !usedIds.contains(s.id)).toList()
         : List<Song>.from(candidates);
     if (pool.isEmpty) return [];
     pool.shuffle(rng);
-    final take = state.avoidRepeat
+    final take = avoidRepeat
         ? min<int>(state.warmupCount, pool.length)
         : state.warmupCount;
     return List.generate(take, (index) {
-      if (state.avoidRepeat) {
+      if (avoidRepeat) {
         return pool[index];
       }
       return pool[rng.nextInt(pool.length)];
     });
   }
 
-  List<Song> _pickSongs(List<Song> candidates, int desiredCount) {
+  List<Song> _pickSongs(
+    List<Song> candidates,
+    int desiredCount, {
+    required bool avoidRepeat,
+    int? lastSongId,
+  }) {
     if (candidates.isEmpty || desiredCount <= 0) return [];
-    final rng = Random();
-    if (!state.avoidRepeat) {
-      return List.generate(
+    if (!avoidRepeat) {
+      return _pickSongsWithSpacing(
+        candidates,
         desiredCount,
-        (_) => candidates[rng.nextInt(candidates.length)],
+        lastSongId: lastSongId,
       );
     }
+    final rng = Random();
     final pool = List<Song>.from(candidates);
     pool.shuffle(rng);
     final takeCount = min(desiredCount, pool.length);
     return pool.take(takeCount).toList();
+  }
+
+  List<Song> _pickSongsWithSpacing(
+    List<Song> candidates,
+    int desiredCount, {
+    int? lastSongId,
+  }) {
+    final rng = Random();
+    final result = <Song>[];
+    final lastIndex = <int, int>{};
+    int? previousId = lastSongId;
+    for (var i = 0; i < desiredCount; i++) {
+      final eligible = candidates.where((song) => song.id != previousId).toList();
+      final pool = eligible.isEmpty ? candidates : eligible;
+      Song? best;
+      var bestScore = -1;
+      for (final song in pool) {
+        final last = lastIndex[song.id];
+        final score = last == null ? 100000 + rng.nextInt(100) : i - last;
+        if (score > bestScore) {
+          bestScore = score;
+          best = song;
+        } else if (score == bestScore && rng.nextBool()) {
+          best = song;
+        }
+      }
+      final picked = best ?? pool[rng.nextInt(pool.length)];
+      result.add(picked);
+      lastIndex[picked.id] = i;
+      previousId = picked.id;
+    }
+    return result;
   }
 
   Future<List<Song>> _loadSourceSongs() {
@@ -209,5 +253,9 @@ class RandomQueueNotifier extends AutoDisposeNotifier<RandomQueueState> {
             .read(playlistRepoProvider)
             .songsInPlaylistSortedByNorm(state.selectedPlaylistId!);
     }
+  }
+
+  Future<List<Song>> loadCandidates() {
+    return _loadSourceSongs();
   }
 }

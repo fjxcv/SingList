@@ -26,17 +26,25 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     final repo = ref.watch(songRepoProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('歌曲库'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddDialog(context, repo),
-          ),
-          IconButton(
-            icon: const Icon(Icons.content_paste),
-            onPressed: () => _showBulkImportDialog(context, repo),
-          ),
-        ],
+        title: Text(batchMode ? '已选 ${selectedIds.length}' : '歌曲库'),
+        actions: batchMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: '取消选择',
+                  onPressed: _exitBatchMode,
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () => _showAddDialog(context, repo),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.content_paste),
+                  onPressed: () => _showBulkImportDialog(context, repo),
+                ),
+              ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64),
           child: Padding(
@@ -56,93 +64,85 @@ class _SongsPageState extends ConsumerState<SongsPage> {
           if (list.isEmpty) {
             return const Center(child: Text('暂无歌曲，点击右上角新增'));
           }
-          return Column(
-            children: [
-              if (batchMode)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              FilledButton.tonal(
-                                onPressed: selectedIds.isEmpty
-                                    ? null
-                                    : () => _addTags(context, selectionOrder.toList()),
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(0, 32),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                ),
-                                child: const Text('加标签'),
-                              ),
-                              FilledButton.tonal(
-                                onPressed: selectedIds.isEmpty
-                                    ? null
-                                    : () => _addToPlaylist(context, selectionOrder.toList()),
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(0, 32),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                ),
-                                child: const Text('加入歌单'),
-                              ),
-                              FilledButton.tonal(
-                                onPressed: selectedIds.isEmpty
-                                    ? null
-                                    : () => _confirmBatchDelete(context, repo),
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(0, 32),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                ),
-                                child: const Text('删除'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text('${selectedIds.length} 已选'),
-                        TextButton(
-                          onPressed: _exitBatchMode,
-                          child: const Text('取消'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: list.length,
-                  itemBuilder: (context, index) {
-                    final song = list[index];
-                    final checked = selectedIds.contains(song.id);
-                    return ListTile(
-                      leading: batchMode
-                          ? Checkbox(
-                              value: checked,
-                              onChanged: (_) => _toggleSelection(song.id),
-                            )
-                          : null,
-                      title: Text(song.title),
-                      subtitle: Text(song.artist),
-                      onTap: () => batchMode ? _toggleSelection(song.id) : _editDialog(context, repo, song),
-                      onLongPress: () => _showSongActions(context, repo, song),
-                    );
-                  },
-                ),
-              ),
-            ],
+          return ListView.builder(
+            itemCount: list.length,
+            itemBuilder: (context, index) {
+              final song = list[index];
+              final checked = selectedIds.contains(song.id);
+              return ListTile(
+                title: Text(song.title),
+                subtitle: Text(song.artist),
+                tileColor:
+                    checked ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35) : null,
+                trailing: batchMode
+                    ? Checkbox(
+                        value: checked,
+                        onChanged: (_) => _toggleSelection(song.id),
+                      )
+                    : null,
+                onTap: () => batchMode ? _toggleSelection(song.id) : _editDialog(context, repo, song),
+                onLongPress: () =>
+                    batchMode ? _toggleSelection(song.id) : _showSongActions(context, repo, song),
+              );
+            },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
       ),
+      bottomNavigationBar: batchMode
+          ? SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  border: Border(
+                    top: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                ),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    FilledButton.tonal(
+                      onPressed:
+                          selectedIds.isEmpty ? null : () => _addTags(context, selectionOrder.toList()),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: const Text('加标签'),
+                    ),
+                    FilledButton.tonal(
+                      onPressed: selectedIds.isEmpty
+                          ? null
+                          : () => _addToPlaylist(context, selectionOrder.toList()),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: const Text('加入歌单'),
+                    ),
+                    FilledButton.tonal(
+                      onPressed:
+                          selectedIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: const Text('删除'),
+                    ),
+                    Text('${selectedIds.length} 已选'),
+                    TextButton(
+                      onPressed: _exitBatchMode,
+                      child: const Text('取消'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 
