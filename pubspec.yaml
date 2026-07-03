@@ -1,5 +1,5 @@
 name: sing_list
-description: "K歌选歌 - 本地优先的跨端 Flutter MVP"
+description: "K??? - ??????? Flutter MVP"
 version: 0.1.0
 publish_to: 'none'
 
@@ -25,6 +25,7 @@ flutter:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^4.0.0
   drift_dev: ^2.17.0
   build_runner: ^2.4.8
   freezed: ^2.5.2

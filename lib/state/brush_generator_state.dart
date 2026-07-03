@@ -10,6 +10,22 @@ import 'providers.dart';
 
 enum BrushSourceType { all, tag, playlist }
 
+enum BrushPhase { warmup, main }
+
+enum BrushAction { favorite, like, skip }
+
+class BrushDecision {
+  const BrushDecision({
+    required this.phase,
+    required this.song,
+    required this.action,
+  });
+
+  final BrushPhase phase;
+  final Song song;
+  final BrushAction action;
+}
+
 class BrushGeneratorState {
   const BrushGeneratorState({
     this.sourceType = BrushSourceType.all,
@@ -27,6 +43,10 @@ class BrushGeneratorState {
     this.warmupSongIds = const {},
     this.warmupSkippedIds = const {},
     this.warmupSongs = const [],
+    this.phase = BrushPhase.main,
+    this.warmupFavorites = const [],
+    this.warmupLikes = const [],
+    this.history = const [],
   });
 
   final BrushSourceType sourceType;
@@ -44,11 +64,26 @@ class BrushGeneratorState {
   final Set<int> warmupSongIds;
   final Set<int> warmupSkippedIds;
   final List<Song> warmupSongs;
+  final BrushPhase phase;
+  final List<Song> warmupFavorites;
+  final List<Song> warmupLikes;
+  final List<BrushDecision> history;
 
   Song? get currentSong =>
       currentIndex < songs.length ? songs[currentIndex] : null;
 
-  bool get completed => songs.isNotEmpty && currentIndex >= songs.length;
+  bool get completed =>
+      phase == BrushPhase.main &&
+      ((songs.isNotEmpty && currentIndex >= songs.length) ||
+          (songs.isEmpty && inBrushMode && !isLoading));
+
+  bool get canGoPrevious => currentIndex > 0;
+
+  String get phaseLabel =>
+      phase == BrushPhase.warmup ? '开嗓暖场' : '刷歌';
+
+  double get progressValue =>
+      songs.isEmpty ? 0 : currentIndex / songs.length;
 
   BrushGeneratorState copyWith({
     BrushSourceType? sourceType,
@@ -66,6 +101,10 @@ class BrushGeneratorState {
     Set<int>? warmupSongIds,
     Set<int>? warmupSkippedIds,
     List<Song>? warmupSongs,
+    BrushPhase? phase,
+    List<Song>? warmupFavorites,
+    List<Song>? warmupLikes,
+    List<BrushDecision>? history,
   }) {
     return BrushGeneratorState(
       sourceType: sourceType ?? this.sourceType,
@@ -83,6 +122,10 @@ class BrushGeneratorState {
       warmupSongIds: warmupSongIds ?? this.warmupSongIds,
       warmupSkippedIds: warmupSkippedIds ?? this.warmupSkippedIds,
       warmupSongs: warmupSongs ?? this.warmupSongs,
+      phase: phase ?? this.phase,
+      warmupFavorites: warmupFavorites ?? this.warmupFavorites,
+      warmupLikes: warmupLikes ?? this.warmupLikes,
+      history: history ?? this.history,
     );
   }
 }
@@ -140,8 +183,33 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
       inBrushMode: true,
     );
     try {
-      final songs = await _loadSourceSongs();
-      if (songs.isEmpty) {
+      final warmupSongs = await _loadWarmupSongs();
+      final warmupSongIds = warmupSongs.map((s) => s.id).toSet();
+      final shouldStartWarmup =
+          state.warmupEnabled && state.warmupCount > 0 && warmupSongs.isNotEmpty;
+
+      if (shouldStartWarmup) {
+        final shuffled = List<Song>.from(warmupSongs)..shuffle(Random());
+        state = state.copyWith(
+          songs: shuffled,
+          currentIndex: 0,
+          favorites: const [],
+          likes: const [],
+          isLoading: false,
+          error: null,
+          warmupSongs: warmupSongs,
+          warmupSongIds: warmupSongIds,
+          warmupSkippedIds: const {},
+          warmupFavorites: const [],
+          warmupLikes: const [],
+          history: const [],
+          phase: BrushPhase.warmup,
+        );
+        return;
+      }
+
+      final mainSongs = await _loadMainSongs(warmupSongIds);
+      if (mainSongs.isEmpty) {
         state = state.copyWith(
           isLoading: false,
           error: '请先选择有效来源',
@@ -153,10 +221,8 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
         );
         return;
       }
-      final warmupSongs = await _loadWarmupSongs();
-      final warmupSongIds = warmupSongs.map((s) => s.id).toSet();
       state = state.copyWith(
-        songs: songs,
+        songs: mainSongs,
         currentIndex: 0,
         favorites: const [],
         likes: const [],
@@ -165,6 +231,10 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
         warmupSongs: warmupSongs,
         warmupSongIds: warmupSongIds,
         warmupSkippedIds: const {},
+        warmupFavorites: const [],
+        warmupLikes: const [],
+        history: const [],
+        phase: BrushPhase.main,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: '$e');
@@ -179,44 +249,71 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   void markFavorite() {
     final song = state.currentSong;
     if (song == null) return;
-    final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds);
-    if (state.warmupSongIds.contains(song.id)) {
-      warmupSkippedIds.remove(song.id);
+    _recordDecision(BrushAction.favorite);
+    if (state.phase == BrushPhase.warmup) {
+      final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds)
+        ..remove(song.id);
+      state = state.copyWith(
+        warmupFavorites: [...state.warmupFavorites, song],
+        warmupSkippedIds: warmupSkippedIds,
+        currentIndex: state.currentIndex + 1,
+      );
+      _checkPhaseTransition();
+      return;
     }
-    final updatedFavorites = [...state.favorites, song];
     state = state.copyWith(
-      favorites: updatedFavorites,
+      favorites: [...state.favorites, song],
       currentIndex: state.currentIndex + 1,
-      warmupSkippedIds: warmupSkippedIds,
     );
   }
 
   void markLike() {
     final song = state.currentSong;
     if (song == null) return;
-    final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds);
-    if (state.warmupSongIds.contains(song.id)) {
-      warmupSkippedIds.remove(song.id);
+    _recordDecision(BrushAction.like);
+    if (state.phase == BrushPhase.warmup) {
+      final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds)
+        ..remove(song.id);
+      state = state.copyWith(
+        warmupLikes: [...state.warmupLikes, song],
+        warmupSkippedIds: warmupSkippedIds,
+        currentIndex: state.currentIndex + 1,
+      );
+      _checkPhaseTransition();
+      return;
     }
-    final updatedLikes = [...state.likes, song];
     state = state.copyWith(
-      likes: updatedLikes,
+      likes: [...state.likes, song],
       currentIndex: state.currentIndex + 1,
-      warmupSkippedIds: warmupSkippedIds,
     );
   }
 
   void skip() {
-    if (state.currentSong == null) return;
-    final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds);
-    final song = state.currentSong!;
-    if (state.warmupSongIds.contains(song.id)) {
-      warmupSkippedIds.add(song.id);
+    final song = state.currentSong;
+    if (song == null) return;
+    _recordDecision(BrushAction.skip);
+    if (state.phase == BrushPhase.warmup) {
+      final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds)
+        ..add(song.id);
+      state = state.copyWith(
+        warmupSkippedIds: warmupSkippedIds,
+        currentIndex: state.currentIndex + 1,
+      );
+      _checkPhaseTransition();
+      return;
     }
     state = state.copyWith(currentIndex: state.currentIndex + 1);
-    if (warmupSkippedIds.length != state.warmupSkippedIds.length) {
-      state = state.copyWith(warmupSkippedIds: warmupSkippedIds);
-    }
+  }
+
+  void goPrevious() {
+    if (!state.canGoPrevious || state.history.isEmpty) return;
+    final decision = state.history.last;
+    final newHistory = state.history.sublist(0, state.history.length - 1);
+    state = state.copyWith(
+      currentIndex: state.currentIndex - 1,
+      history: newHistory,
+    );
+    _undoDecision(decision);
   }
 
   Future<Playlist?> createQueue({List<Song> selectedWarmups = const []}) async {
@@ -240,7 +337,97 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
       warmupSongIds: const {},
       warmupSkippedIds: const {},
       warmupSongs: const [],
+      warmupFavorites: const [],
+      warmupLikes: const [],
+      history: const [],
+      phase: BrushPhase.main,
     );
+  }
+
+  void _recordDecision(BrushAction action) {
+    final song = state.currentSong;
+    if (song == null) return;
+    state = state.copyWith(
+      history: [
+        ...state.history,
+        BrushDecision(phase: state.phase, song: song, action: action),
+      ],
+    );
+  }
+
+  void _undoDecision(BrushDecision decision) {
+    switch (decision.phase) {
+      case BrushPhase.warmup:
+        switch (decision.action) {
+          case BrushAction.favorite:
+            state = state.copyWith(
+              warmupFavorites: state.warmupFavorites
+                  .where((s) => s.id != decision.song.id)
+                  .toList(),
+            );
+          case BrushAction.like:
+            state = state.copyWith(
+              warmupLikes: state.warmupLikes
+                  .where((s) => s.id != decision.song.id)
+                  .toList(),
+            );
+          case BrushAction.skip:
+            final warmupSkippedIds = Set<int>.from(state.warmupSkippedIds)
+              ..remove(decision.song.id);
+            state = state.copyWith(warmupSkippedIds: warmupSkippedIds);
+        }
+      case BrushPhase.main:
+        switch (decision.action) {
+          case BrushAction.favorite:
+            state = state.copyWith(
+              favorites: state.favorites
+                  .where((s) => s.id != decision.song.id)
+                  .toList(),
+            );
+          case BrushAction.like:
+            state = state.copyWith(
+              likes: state.likes
+                  .where((s) => s.id != decision.song.id)
+                  .toList(),
+            );
+          case BrushAction.skip:
+            break;
+        }
+    }
+  }
+
+  Future<void> _checkPhaseTransition() async {
+    if (state.phase != BrushPhase.warmup) return;
+    if (state.currentIndex < state.songs.length) return;
+    state = state.copyWith(isLoading: true);
+    await _enterMainPhase();
+  }
+
+  Future<void> _enterMainPhase() async {
+    try {
+      final mainSongs = await _loadMainSongs(state.warmupSongIds);
+      if (mainSongs.isEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          songs: const [],
+          phase: BrushPhase.main,
+        );
+        return;
+      }
+      state = state.copyWith(
+        songs: mainSongs,
+        currentIndex: 0,
+        isLoading: false,
+        phase: BrushPhase.main,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: '$e');
+    }
+  }
+
+  Future<List<Song>> _loadMainSongs(Set<int> excludeIds) async {
+    final sourceSongs = await _loadSourceSongs();
+    return sourceSongs.where((s) => !excludeIds.contains(s.id)).toList();
   }
 
   Future<List<Song>> _loadSourceSongs() {
@@ -276,17 +463,15 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
 
   Future<List<Song>> _pickWarmups() async {
     if (!state.warmupEnabled || state.warmupCount <= 0) return [];
-    final forced = state.favorites.where((s) => state.warmupSongIds.contains(s.id)).toList();
-    final liked = state.likes
-        .where((s) => state.warmupSongIds.contains(s.id) && !state.warmupSkippedIds.contains(s.id))
+    final forced = List<Song>.from(state.warmupFavorites);
+    final liked = state.warmupLikes
+        .where((s) => !state.warmupSkippedIds.contains(s.id))
+        .where((s) => !forced.any((f) => f.id == s.id))
         .toList();
     final remaining = state.warmupCount - forced.length;
-    final selected = <Song>[
-      ...forced,
-    ];
+    final selected = <Song>[...forced];
     if (remaining > 0 && liked.isNotEmpty) {
-      final pool = List<Song>.from(liked);
-      pool.shuffle(Random());
+      final pool = List<Song>.from(liked)..shuffle(Random());
       selected.addAll(pool.take(min(remaining, pool.length)));
     }
     return selected;
@@ -300,9 +485,9 @@ class BrushGeneratorNotifier extends AutoDisposeNotifier<BrushGeneratorState> {
   }
 
   WarmupPlan buildWarmupPlan() {
-    final forced = state.favorites.where((s) => state.warmupSongIds.contains(s.id)).toList();
-    final liked = state.likes
-        .where((s) => state.warmupSongIds.contains(s.id) && !state.warmupSkippedIds.contains(s.id))
+    final forced = List<Song>.from(state.warmupFavorites);
+    final liked = state.warmupLikes
+        .where((s) => !state.warmupSkippedIds.contains(s.id))
         .where((s) => !forced.any((f) => f.id == s.id))
         .toList();
     final selectedIds = {
