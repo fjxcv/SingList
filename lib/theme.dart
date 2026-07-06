@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'ui/widgets/ios_components.dart';
+
 // ThemeData buildTheme(WidgetRef ref) {
 //   final seed = Colors.indigo;
 //   return ThemeData(
@@ -15,94 +17,131 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // }
 
 ThemeData buildTheme(WidgetRef ref) {
-  // 选择一组柔和的基色，白底配浅灰紫/灰蓝
-  const primaryColor = Color(0xFF1A1A1A); // 接近黑但不纯黑
-  const secondaryColor = Color(0xFF757575); // 次文本颜色
-  const backgroundColor = Color(0xFFF5F6FA); // 页面背景（最浅）
-  const cardColor = Color(0xFFFFFFFF);      // 卡片本体（纯白）
-  const cardBorderColor = Color(0xFFE0E3EB); // 卡片边框（浅灰蓝）
-
-  const radiusSmall = 8.0;
-  const radiusMedium = 12.0;
-
-  final baseScheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFFCBD3E0),
-    brightness: Brightness.light,
-  ).copyWith(
-    background: backgroundColor,
-    surface: cardColor,
-    surfaceVariant: const Color(0xFFE9ECF4), // 选中态背景
-    primary: primaryColor,
-    onPrimary: Colors.white,
-    onSurface: primaryColor,
-    onSurfaceVariant: secondaryColor,
-  );
-
-  final textTheme = Typography.material2021().black.copyWith(
-    bodyLarge: const TextStyle(fontSize: 16, color: primaryColor),
-    bodyMedium: const TextStyle(fontSize: 14, color: primaryColor),
-    bodySmall: const TextStyle(fontSize: 12, color: secondaryColor),
+  const colorScheme = ColorScheme.light(
+    primary: AppColors.systemBlue,
+    onPrimary: AppColors.surface,
+    secondary: AppColors.systemBlue,
+    onSecondary: AppColors.surface,
+    surface: AppColors.surface,
+    onSurface: AppColors.label,
+    error: AppColors.destructive,
+    onError: AppColors.surface,
+    outline: AppColors.separator,
   );
 
   return ThemeData(
     useMaterial3: true,
-    colorScheme: baseScheme,
-    textTheme: textTheme,
-    scaffoldBackgroundColor: backgroundColor,
-    cardTheme: CardThemeData(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      color: cardColor,
-      elevation: 0, // 继续保持干净
-      shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.all(Radius.circular(radiusMedium)),
-        side: BorderSide(
-          color: cardBorderColor, // 👈 关键：描边
-          width: 0.8,
-        ),
-      ),
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor: AppColors.groupedBackground,
+    dividerColor: AppColors.separator,
+    dividerTheme: const DividerThemeData(color: AppColors.separator, thickness: 0.5),
+    textTheme: const TextTheme(
+      headlineLarge: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: AppColors.label),
+      titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: AppColors.label),
+      titleMedium: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.label),
+      bodyLarge: TextStyle(fontSize: 17, color: AppColors.label),
+      bodyMedium: TextStyle(fontSize: 15, color: AppColors.label),
+      bodySmall: TextStyle(fontSize: 13, color: AppColors.secondaryLabel),
+      labelSmall: TextStyle(fontSize: 10, color: AppColors.secondaryLabel),
     ),
-
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.groupedBackground,
+      foregroundColor: AppColors.label,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      titleTextStyle: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+        color: AppColors.label,
+      ),
+      iconTheme: IconThemeData(color: AppColors.systemBlue, size: 22),
+    ),
+    cardTheme: CardThemeData(
+      color: AppColors.surface,
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.small)),
+    ),
     listTileTheme: const ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    ),
-    dividerTheme: DividerThemeData(
-      color: baseScheme.onSurface.withOpacity(0.1),
-      thickness: 0.5,
+      iconColor: AppColors.systemBlue,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      height: 64,
-      backgroundColor: backgroundColor,
-      indicatorColor: baseScheme.surfaceVariant.withOpacity(0.3),
-      labelTextStyle: MaterialStateProperty.all(
-        textTheme.labelMedium?.copyWith(color: primaryColor),
-      ),
-      iconTheme: MaterialStateProperty.resolveWith((states) {
-        final selected = states.contains(MaterialState.selected);
+      height: 83,
+      backgroundColor: AppColors.surface,
+      indicatorColor: Colors.transparent,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          color: selected ? AppColors.systemBlue : AppColors.secondaryLabel,
+        );
+      }),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
         return IconThemeData(
-          color: selected ? primaryColor : secondaryColor,
+          color: selected ? AppColors.systemBlue : AppColors.secondaryLabel,
+          size: 24,
         );
       }),
     ),
-    inputDecorationTheme: const InputDecorationTheme(
+    inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AppColors.searchBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(radiusSmall)),
-        borderSide: BorderSide(color: Colors.transparent),
+        borderRadius: BorderRadius.circular(AppRadii.small),
+        borderSide: BorderSide.none,
       ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      hintStyle: TextStyle(color: secondaryColor),
-    ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: backgroundColor,
-      elevation: 0,
-      centerTitle: true,
-      titleTextStyle: TextStyle(
-        color: primaryColor,
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadii.small),
+        borderSide: BorderSide.none,
       ),
-      iconTheme: IconThemeData(color: primaryColor),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadii.small),
+        borderSide: const BorderSide(color: AppColors.systemBlue, width: 1),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      hintStyle: const TextStyle(fontSize: 17, color: AppColors.secondaryLabel),
     ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.systemBlue,
+        foregroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.medium)),
+        minimumSize: const Size.fromHeight(50),
+        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: AppColors.systemBlue),
+    ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: AppColors.label,
+      unselectedLabelColor: AppColors.secondaryLabel,
+      indicatorColor: AppColors.systemBlue,
+      labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      unselectedLabelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: AppColors.groupedBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.large)),
+      ),
+    ),
+    snackBarTheme: const SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadii.medium))),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppColors.systemBlue;
+        return Colors.transparent;
+      }),
+      side: const BorderSide(color: AppColors.separator, width: 1.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.systemBlue),
   );
 }

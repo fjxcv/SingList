@@ -7,6 +7,7 @@ import '../../state/providers.dart';
 import '../../service/kqueue_text_service.dart';
 import 'queue_page.dart';
 import 'simple_playlist_page.dart';
+import '../widgets/ios_components.dart';
 
 class PlaylistsPage extends ConsumerStatefulWidget {
   const PlaylistsPage({super.key});
@@ -26,6 +27,7 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
     final repo = ref.watch(playlistRepoProvider);
     final textService = ref.watch(kqueueTextServiceProvider);
     return Scaffold(
+      backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
         title: Text(selectionMode ? '已选 ${selectedIds.length}' : '歌单 / 队列'),
         actions: selectionMode

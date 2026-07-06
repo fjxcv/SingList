@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/db/app_database.dart';
 import '../../repository/tag_repository.dart';
 import '../../state/providers.dart';
+import '../widgets/ios_components.dart';
 
 class TagsPage extends ConsumerStatefulWidget {
   const TagsPage({super.key});
@@ -20,6 +21,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     final tagsAsync = ref.watch(tagsProvider);
     final repo = ref.watch(tagRepoProvider);
     return Scaffold(
+      backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
         title: const Text('标签'),
         actions: [
@@ -185,21 +187,34 @@ class _TagsPageState extends ConsumerState<TagsPage> {
       builder: (context) => AlertDialog(
         title: Text(tag == null ? '新增标签' : '修改标签'),
         content: TextField(controller: controller, decoration: const InputDecoration(labelText: '名称')),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                if (tag == null) {
-                  repo.create(name);
-                } else {
-                  repo.rename(tag.id, name);
-                }
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('保存'),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('取消'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: () {
+                    final name = controller.text.trim();
+                    if (name.isNotEmpty) {
+                      if (tag == null) {
+                        repo.create(name);
+                      } else {
+                        repo.rename(tag.id, name);
+                      }
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: const Text('保存'),
+                ),
+              ),
+            ],
           ),
         ],
       ),

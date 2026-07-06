@@ -7,6 +7,7 @@ import '../../repository/playlist_repository.dart';
 import '../../repository/song_repository.dart';
 import '../../state/providers.dart';
 import '../../service/kqueue_text_service.dart';
+import '../widgets/ios_components.dart';
 
 class QueuePage extends ConsumerStatefulWidget {
   final Playlist playlist;
@@ -26,6 +27,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     final textService = ref.watch(kqueueTextServiceProvider);
     final songRepo = ref.watch(songRepoProvider);
     return Scaffold(
+      backgroundColor: AppColors.groupedBackground,
       appBar: AppBar(
         title: Text(selectionMode ? '已选 ${selectedItemIds.length}' : widget.playlist.name),
         actions: [
@@ -55,6 +57,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
           final items = snapshot.data!;
           if (items.isEmpty) return const Center(child: Text('队列为空'));
           return ReorderableListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             itemCount: items.length,
             buildDefaultDragHandles: false,
             onReorder: (oldIndex, newIndex) async {
@@ -70,25 +73,35 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                   key: ValueKey('dismiss-${entry.item.id}'),
                   direction: DismissDirection.endToStart,
                   background: Container(
-                    color: Theme.of(context).colorScheme.error,
+                    decoration: BoxDecoration(
+                      color: AppColors.destructive,
+                      borderRadius: BorderRadius.circular(AppRadii.small),
+                    ),
                     alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: const Text(
+                      '删除',
+                      style: TextStyle(color: AppColors.surface, fontWeight: FontWeight.w600),
+                    ),
                   ),
                   confirmDismiss: (_) => _confirmRemoveItem(context),
                   onDismissed: (_) async {
                     await repo.removeQueueItem(entry.item.id);
                   },
                   child: ListTile(
-                    leading: CircleAvatar(
-                      radius: 14,
-                      child: Text('${index + 1}'),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: IosIndexBadge(index: index + 1),
+                    title: Text(
+                      entry.song.title,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
-                    title: Text(entry.song.title),
-                    subtitle: Text(entry.song.artist),
+                    subtitle: Text(
+                      entry.song.artist,
+                      style: const TextStyle(fontSize: 13, color: AppColors.secondaryLabel),
+                    ),
                     tileColor: isSelected
-                        ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35)
-                        : null,
+                        ? AppColors.lightBlueFill.withValues(alpha: 0.35)
+                        : AppColors.surface,
                     onTap: () {
                       if (selectionMode) {
                         _toggleSelection(entry.item.id);
@@ -113,7 +126,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                         if (!selectionMode)
                           ReorderableDragStartListener(
                             index: index,
-                            child: const Icon(Icons.drag_handle),
+                            child: const Icon(Icons.drag_handle, color: AppColors.secondaryLabel),
                           ),
                       ],
                     ),

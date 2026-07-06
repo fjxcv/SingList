@@ -6,6 +6,7 @@ import '../../repository/song_repository.dart';
 import '../../repository/tag_repository.dart';
 import '../../state/providers.dart';
 import '../../data/db/app_database.dart';
+import '../widgets/ios_components.dart';
 
 class SongsPage extends ConsumerStatefulWidget {
   const SongsPage({super.key});
@@ -25,84 +26,95 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     final songsAsync = ref.watch(songsProvider);
     final repo = ref.watch(songRepoProvider);
     final totalCount = songsAsync.maybeWhen(data: (songs) => songs.length, orElse: () => null);
+    final titleText = batchMode
+        ? '已选 ${selectedIds.length}'
+        : '歌曲库${totalCount == null ? '' : ' ($totalCount)'}';
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          batchMode
-              ? '已选 ${selectedIds.length}'
-              : '歌曲库${totalCount == null ? '' : ' ($totalCount)'}',
-        ),
-        actions: batchMode
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: '取消选择',
-                  onPressed: _exitBatchMode,
-                ),
-              ]
-            : [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _showAddDialog(context, repo),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.content_paste),
-                  onPressed: () => _showBulkImportDialog(context, repo),
-                ),
-              ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: '按歌名/歌手搜索'),
+      backgroundColor: AppColors.groupedBackground,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            IosLargeTitleHeader(
+              title: titleText,
+              actions: batchMode
+                  ? [
+                      IosIconAction(
+                        icon: Icons.close,
+                        tooltip: '取消选择',
+                        onPressed: _exitBatchMode,
+                      ),
+                    ]
+                  : [
+                      IosIconAction(
+                        icon: Icons.add,
+                        onPressed: () => _showAddDialog(context, repo),
+                      ),
+                      IosIconAction(
+                        icon: Icons.content_paste,
+                        onPressed: () => _showBulkImportDialog(context, repo),
+                      ),
+                    ],
+            ),
+            IosSearchField(
+              hintText: '按歌名/歌手搜索',
               onChanged: (v) => setState(() => keyword = v),
             ),
-          ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: songsAsync.when(
+                data: (songs) {
+                  final list = keyword.isEmpty
+                      ? songs
+                      : songs
+                          .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
+                          .toList();
+                  if (list.isEmpty) {
+                    return const Center(child: Text('暂无歌曲，点击右上角新增'));
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    children: [
+                      IosGroupedSection(
+                        children: list.map((song) {
+                          final checked = selectedIds.contains(song.id);
+                          return IosListRow(
+                            title: song.title,
+                            subtitle: song.artist,
+                            selected: checked,
+                            trailing: batchMode
+                                ? Checkbox(
+                                    value: checked,
+                                    onChanged: (_) => _toggleSelection(song.id),
+                                  )
+                                : null,
+                            onTap: () => batchMode
+                                ? _toggleSelection(song.id)
+                                : _editDialog(context, repo, song),
+                            onLongPress: () => batchMode
+                                ? _toggleSelection(song.id)
+                                : _showSongActions(context, repo, song),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('加载失败: $e')),
+              ),
+            ),
+          ],
         ),
-      ),
-      body: songsAsync.when(
-        data: (songs) {
-          final list = keyword.isEmpty
-              ? songs
-              : songs.where((s) => s.title.contains(keyword) || s.artist.contains(keyword)).toList();
-          if (list.isEmpty) {
-            return const Center(child: Text('暂无歌曲，点击右上角新增'));
-          }
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              final song = list[index];
-              final checked = selectedIds.contains(song.id);
-              return ListTile(
-                title: Text(song.title),
-                subtitle: Text(song.artist),
-                tileColor:
-                    checked ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35) : null,
-                trailing: batchMode
-                    ? Checkbox(
-                        value: checked,
-                        onChanged: (_) => _toggleSelection(song.id),
-                      )
-                    : null,
-                onTap: () => batchMode ? _toggleSelection(song.id) : _editDialog(context, repo, song),
-                onLongPress: () =>
-                    batchMode ? _toggleSelection(song.id) : _showSongActions(context, repo, song),
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败: $e')),
       ),
       bottomNavigationBar: batchMode
           ? SafeArea(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  color: AppColors.surface,
                   border: Border(
-                    top: BorderSide(color: Theme.of(context).dividerColor),
+                    top: BorderSide(color: AppColors.separator, width: 0.5),
                   ),
                 ),
                 child: Wrap(

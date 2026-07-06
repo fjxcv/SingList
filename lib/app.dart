@@ -7,6 +7,7 @@ import 'ui/pages/generator_page.dart';
 import 'ui/pages/playlists_page.dart';
 import 'ui/pages/songs_page.dart';
 import 'ui/pages/tags_page.dart';
+import 'ui/widgets/ios_components.dart';
 
 class SingListApp extends ConsumerStatefulWidget {
   const SingListApp({super.key});
@@ -25,6 +26,7 @@ class _SingListAppState extends ConsumerState<SingListApp> {
       debugShowCheckedModeBanner: false,
       theme: buildTheme(ref),
       home: Scaffold(
+        backgroundColor: AppColors.groupedBackground,
         body: IndexedStack(
           index: _index,
           children: const [
@@ -36,11 +38,13 @@ class _SingListAppState extends ConsumerState<SingListApp> {
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.library_music), label: '歌曲'),
-            NavigationDestination(icon: Icon(Icons.sell), label: '标签'),
-            NavigationDestination(icon: Icon(Icons.queue_music), label: '歌单'),
-            NavigationDestination(icon: Icon(Icons.auto_awesome), label: '生成'),
+            NavigationDestination(icon: Icon(Icons.library_music_outlined), selectedIcon: Icon(Icons.library_music), label: '歌曲'),
+            NavigationDestination(icon: Icon(Icons.sell_outlined), selectedIcon: Icon(Icons.sell), label: '标签'),
+            NavigationDestination(icon: Icon(Icons.queue_music_outlined), selectedIcon: Icon(Icons.queue_music), label: '歌单'),
+            NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: '生成'),
           ],
           onDestinationSelected: (i) => setState(() => _index = i),
         ),

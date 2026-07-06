@@ -7,6 +7,7 @@ import '../../state/providers.dart';
 import 'queue_page.dart';
 import 'random_queue_page.dart';
 import '../widgets/bottom_fab_action.dart';
+import '../widgets/ios_components.dart';
 
 class GeneratorPage extends StatelessWidget {
   const GeneratorPage({super.key});
@@ -19,7 +20,7 @@ class GeneratorPage extends StatelessWidget {
         appBar: AppBar(
           title: const Text('生成 KQueue'),
           bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(40),
+            preferredSize: Size.fromHeight(44),
             child: TabBar(
               tabs: [
                 Tab(text: '刷歌模式'),
@@ -50,9 +51,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
     final playlists = ref.watch(normalPlaylistsProvider).valueOrNull ?? [];
 
     if (state.inBrushMode) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: _BrushBody(
+      return _BrushBody(
           state: state,
           onFavorite: notifier.markFavorite,
           onLike: notifier.markLike,
@@ -60,7 +59,6 @@ class _BrushGeneratorTab extends ConsumerWidget {
           onGoPrevious: notifier.goPrevious,
           onFinish: () => _handleFinish(context, notifier),
           onBack: () => _handleBack(context, notifier),
-        ),
       );
     }
 
@@ -461,9 +459,8 @@ class _BrushBody extends StatelessWidget {
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    Widget content;
     if (state.currentSong != null) {
-      content = _SongCard(
+      return _SongCard(
         state: state,
         song: state.currentSong!,
         onFavorite: onFavorite,
@@ -472,22 +469,16 @@ class _BrushBody extends StatelessWidget {
         onGoPrevious: onGoPrevious,
         onBack: onBack,
       );
-    } else if (state.completed) {
-      content = _FinishCard(
+    }
+    if (state.completed) {
+      return _FinishCard(
         state: state,
         onFinish: onFinish,
         onBack: onBack,
       );
-    } else {
-      content = const Text('选择来源后开始刷歌');
     }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: SingleChildScrollView(
-          child: content,
-        ),
-      ),
+    return const Center(
+      child: Text('选择来源后开始刷歌', style: TextStyle(color: AppColors.secondaryLabel)),
     );
   }
 }
@@ -515,71 +506,82 @@ class _SongCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final progressText =
         '${state.phaseLabel} ${state.currentIndex + 1}/${state.songs.length}';
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: '退出刷歌',
-                  onPressed: onBack,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, color: AppColors.secondaryLabel),
+                tooltip: '退出刷歌',
+                onPressed: onBack,
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      progressText,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: state.progressValue,
+                        minHeight: 4,
+                        backgroundColor: AppColors.separator.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: Text(
-                    progressText,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.undo_rounded,
+                  color: state.canGoPrevious
+                      ? AppColors.systemBlue
+                      : AppColors.secondaryLabel.withValues(alpha: 0.4),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.undo),
-                  tooltip: '上一首',
-                  onPressed: state.canGoPrevious ? onGoPrevious : null,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: state.progressValue),
-            const SizedBox(height: 32),
-            Text(
-              song.title,
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              song.artist,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: onFavorite,
-              icon: const Icon(Icons.star),
-              label: const Text('特别想唱'),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: onLike,
-              icon: const Icon(Icons.check),
-              label: const Text('想唱'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: onSkip,
-              icon: const Icon(Icons.close),
-              label: const Text('不想唱'),
-            ),
-          ],
+                tooltip: '撤销',
+                onPressed: state.canGoPrevious ? onGoPrevious : null,
+              ),
+            ],
+          ),
         ),
-      ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 36),
+              child: IosSongCard(title: song.title, artist: song.artist),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(36, 28, 36, 28),
+          child: Column(
+            children: [
+              IosPrimaryButton(
+                label: '特别想唱',
+                icon: Icons.star_rounded,
+                onPressed: onFavorite,
+              ),
+              const SizedBox(height: 12),
+              IosSecondaryButton(
+                label: '想唱',
+                icon: Icons.check_rounded,
+                onPressed: onLike,
+              ),
+              const SizedBox(height: 12),
+              IosGrayButton(
+                label: '不想唱',
+                icon: Icons.close_rounded,
+                onPressed: onSkip,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -597,45 +599,41 @@ class _FinishCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: const Icon(Icons.close),
-                tooltip: '退出刷歌',
-                onPressed: onBack,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: AppColors.secondaryLabel),
+              tooltip: '退出刷歌',
+              onPressed: onBack,
             ),
+          ),
+          const Text(
+            '刷歌完成',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          if (state.warmupEnabled && state.warmupCount > 0) ...[
             Text(
-              '刷歌完成',
-              style: Theme.of(context).textTheme.headlineSmall,
+              '开嗓：⭐ ${state.warmupFavorites.length} | ✅ ${state.warmupLikes.length}',
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            if (state.warmupEnabled && state.warmupCount > 0) ...[
-              Text(
-                '开嗓：⭐ ${state.warmupFavorites.length} | ✅ ${state.warmupLikes.length}',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-            ],
-            Text(
-              '主体：⭐ ${state.favorites.length} | ✅ ${state.likes.length}',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: onFinish,
-              child: const Text('生成 KQueue 并查看'),
-            ),
+            const SizedBox(height: 8),
           ],
-        ),
+          Text(
+            '主体：⭐ ${state.favorites.length} | ✅ ${state.likes.length}',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          IosPrimaryButton(
+            label: '生成 KQueue 并查看',
+            onPressed: onFinish,
+          ),
+        ],
       ),
     );
   }
