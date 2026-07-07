@@ -39,7 +39,7 @@ class _CollapsibleSelectedChipsState extends State<CollapsibleSelectedChips> {
       width: double.maxFinite,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+        color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -74,5 +74,5 @@ class _CollapsibleSelectedChipsState extends State<CollapsibleSelectedChips> {
     );
   }
 
-  static String _defaultCountLabel(int count) => '已选 $count 首';
+  static String _defaultCountLabel(int count) => '?? $count ?';
 }

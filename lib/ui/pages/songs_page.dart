@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/db/app_database.dart';
 import '../../repository/playlist_repository.dart';
 import '../../repository/song_repository.dart';
 import '../../repository/tag_repository.dart';
+import '../../service/normalize.dart';
 import '../../state/providers.dart';
-import '../../data/db/app_database.dart';
+import '../widgets/import_flow.dart';
 import '../widgets/ios_components.dart';
+import 'settings_page.dart';
+import 'song_detail_page.dart';
 
 class SongsPage extends ConsumerStatefulWidget {
   const SongsPage({super.key});
@@ -17,18 +21,22 @@ class SongsPage extends ConsumerStatefulWidget {
 
 class _SongsPageState extends ConsumerState<SongsPage> {
   String keyword = '';
+  int? selectedTagId;
   final selectedIds = <int>{};
   final selectionOrder = <int>[];
   bool batchMode = false;
+  Set<int>? _tagSongIds;
 
   @override
   Widget build(BuildContext context) {
     final songsAsync = ref.watch(songsProvider);
+    final tagsAsync = ref.watch(tagsWithCountProvider);
     final repo = ref.watch(songRepoProvider);
     final totalCount = songsAsync.maybeWhen(data: (songs) => songs.length, orElse: () => null);
     final titleText = batchMode
         ? '已选 ${selectedIds.length}'
-        : '歌曲库${totalCount == null ? '' : ' ($totalCount)'}';
+        : '曲库${totalCount == null ? '' : ' ($totalCount)'}';
+
     return Scaffold(
       backgroundColor: AppColors.groupedBackground,
       body: SafeArea(
@@ -47,59 +55,35 @@ class _SongsPageState extends ConsumerState<SongsPage> {
                     ]
                   : [
                       IosIconAction(
+                        icon: Icons.settings_outlined,
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SettingsPage()),
+                        ),
+                      ),
+                      IosIconAction(
                         icon: Icons.add,
                         onPressed: () => _showAddDialog(context, repo),
                       ),
                       IosIconAction(
-                        icon: Icons.content_paste,
-                        onPressed: () => _showBulkImportDialog(context, repo),
+                        icon: Icons.upload_file,
+                        onPressed: () => showImportFlow(context, ref),
                       ),
                     ],
             ),
             IosSearchField(
-              hintText: '按歌名/歌手搜索',
+              hintText: '歌名/歌手搜索',
               onChanged: (v) => setState(() => keyword = v),
             ),
-            const SizedBox(height: 8),
+            tagsAsync.when(
+              data: (tags) => _buildTagFilters(tags),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 4),
             Expanded(
               child: songsAsync.when(
-                data: (songs) {
-                  final list = keyword.isEmpty
-                      ? songs
-                      : songs
-                          .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
-                          .toList();
-                  if (list.isEmpty) {
-                    return const Center(child: Text('暂无歌曲，点击右上角新增'));
-                  }
-                  return ListView(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    children: [
-                      IosGroupedSection(
-                        children: list.map((song) {
-                          final checked = selectedIds.contains(song.id);
-                          return IosListRow(
-                            title: song.title,
-                            subtitle: song.artist,
-                            selected: checked,
-                            trailing: batchMode
-                                ? Checkbox(
-                                    value: checked,
-                                    onChanged: (_) => _toggleSelection(song.id),
-                                  )
-                                : null,
-                            onTap: () => batchMode
-                                ? _toggleSelection(song.id)
-                                : _editDialog(context, repo, song),
-                            onLongPress: () => batchMode
-                                ? _toggleSelection(song.id)
-                                : _showSongActions(context, repo, song),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  );
-                },
+                data: (songs) => _buildSongList(context, repo, songs),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('加载失败: $e')),
               ),
@@ -107,59 +91,129 @@ class _SongsPageState extends ConsumerState<SongsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: batchMode
-          ? SafeArea(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(
-                    top: BorderSide(color: AppColors.separator, width: 0.5),
-                  ),
-                ),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    FilledButton.tonal(
-                      onPressed:
-                          selectedIds.isEmpty ? null : () => _addTags(context, selectionOrder.toList()),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      child: const Text('加标签'),
-                    ),
-                    FilledButton.tonal(
-                      onPressed: selectedIds.isEmpty
-                          ? null
-                          : () => _addToPlaylist(context, selectionOrder.toList()),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      child: const Text('加入歌单'),
-                    ),
-                    FilledButton.tonal(
-                      onPressed:
-                          selectedIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      child: const Text('删除'),
-                    ),
-                    Text('${selectedIds.length} 已选'),
-                    TextButton(
-                      onPressed: _exitBatchMode,
-                      child: const Text('取消'),
-                    ),
-                  ],
-                ),
+      bottomNavigationBar: batchMode ? _buildBatchBar(context, repo) : null,
+    );
+  }
+
+  Widget _buildTagFilters(List<TagWithCount> tags) {
+    if (tags.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('全部'),
+              selected: selectedTagId == null,
+              onSelected: (_) => setState(() {
+                selectedTagId = null;
+                _tagSongIds = null;
+              }),
+            ),
+          ),
+          for (final item in tags)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text('${item.tag.name} (${item.songCount})'),
+                selected: selectedTagId == item.tag.id,
+                onSelected: (_) => _selectTag(item.tag.id),
               ),
-            )
-          : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectTag(int tagId) async {
+    final ids = await ref.read(tagRepoProvider).songIdsByTag(tagId);
+    setState(() {
+      selectedTagId = tagId;
+      _tagSongIds = ids;
+    });
+  }
+
+  Widget _buildSongList(BuildContext context, SongRepository repo, List<Song> songs) {
+    var list = songs.where((s) {
+      if (!matchesSongKeyword(
+        titleNorm: s.titleNorm,
+        artistNorm: s.artistNorm,
+        keyword: keyword,
+      )) {
+        return false;
+      }
+      if (_tagSongIds != null && !_tagSongIds!.contains(s.id)) return false;
+      return true;
+    }).toList();
+
+    if (list.isEmpty) {
+      return const Center(child: Text('暂无歌曲，点击右上角添加'));
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
+      children: [
+        IosGroupedSection(
+          children: list.map((song) {
+            final checked = selectedIds.contains(song.id);
+            return IosListRow(
+              title: song.title,
+              subtitle: song.artist,
+              selected: checked,
+              trailing: batchMode
+                  ? Checkbox(value: checked, onChanged: (_) => _toggleSelection(song.id))
+                  : null,
+              onTap: () => batchMode
+                  ? _toggleSelection(song.id)
+                  : Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => SongDetailPage(song: song)),
+                    ),
+              onLongPress: () =>
+                  batchMode ? _toggleSelection(song.id) : _showSongActions(context, repo, song),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBatchBar(BuildContext context, SongRepository repo) {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.separator, width: 0.5)),
+        ),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FilledButton.tonal(
+              onPressed: selectedIds.isEmpty ? null : () => _addTags(context, selectionOrder.toList()),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 32), padding: const EdgeInsets.symmetric(horizontal: 12)),
+              child: const Text('加标签'),
+            ),
+            FilledButton.tonal(
+              onPressed: selectedIds.isEmpty ? null : () => _addToPlaylist(context, selectionOrder.toList()),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 32), padding: const EdgeInsets.symmetric(horizontal: 12)),
+              child: const Text('加入歌单'),
+            ),
+            FilledButton.tonal(
+              onPressed: selectedIds.isEmpty ? null : () => _confirmBatchDelete(context, repo),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 32), padding: const EdgeInsets.symmetric(horizontal: 12)),
+              child: const Text('删除'),
+            ),
+            Text('${selectedIds.length} 已选'),
+            TextButton(onPressed: _exitBatchMode, child: const Text('取消')),
+          ],
+        ),
+      ),
     );
   }
 
@@ -169,7 +223,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('新增歌曲'),
+        title: const Text('添加歌曲'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -178,100 +232,25 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             TextField(controller: artistController, decoration: const InputDecoration(labelText: '歌手')),
           ],
         ),
+        actionsPadding: EdgeInsets.zero,
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () async {
+          IosDialogActions(
+            cancelLabel: '取消',
+            confirmLabel: '添加',
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () async {
               final result = await repo.addSong(titleController.text, artistController.text);
-              if (mounted) {
+              if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(result == SongUpsertResult.created ? '添加成功' : '歌曲已存在'),
-                  ),
+                  SnackBar(content: Text(result == SongUpsertResult.created ? '添加成功' : '歌曲已存在')),
                 );
               }
             },
-            child: const Text('保存'),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _showBulkImportDialog(BuildContext context, SongRepository repo) async {
-    final textController = TextEditingController();
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('批量导入'),
-        content: TextField(
-          controller: textController,
-          maxLines: 10,
-          decoration: const InputDecoration(
-            hintText: '每行一首，支持格式：\n歌名 - 歌手\n歌名-歌手\n歌名，歌手\n歌名,歌手\n歌名 歌手',
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () async {
-              final lines = textController.text.split('\n');
-              int successCount = 0;
-              List<String> errorLines = [];
-
-              for (final line in lines) {
-                if (line.trim().isEmpty) continue;
-
-                final parts = _parseSongLine(line);
-                if (parts == null) {
-                  errorLines.add(line);
-                  continue;
-                }
-
-                final result = await repo.addSong(parts[0], parts[1]);
-                if (result == SongUpsertResult.created) {
-                  successCount++;
-                }
-              }
-
-              if (mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('导入完成：$successCount 首成功，${errorLines.length} 行失败'),
-                  ),
-                );
-              }
-            },
-            child: const Text('导入'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<String>? _parseSongLine(String line) {
-    const delimiters = [' - ', '-', ' – ', '–', '—', '，', ',', ' '];
-
-    for (var delimiter in delimiters) {
-      final index = line.lastIndexOf(delimiter);
-
-      if (index > 0 && index < line.length - 1) {
-        final title = line.substring(0, index).trim();
-        final artist = line.substring(index + delimiter.length).trim();
-
-        if (title.isNotEmpty) {
-          return [title, artist];
-        }
-      }
-    }
-
-    if (line.trim().isNotEmpty) {
-      return [line.trim(), ''];
-    }
-
-    return null;
   }
 
   void _toggleSelection(int songId) {
@@ -309,14 +288,16 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             TextField(controller: artistController, decoration: const InputDecoration(labelText: '歌手')),
           ],
         ),
+        actionsPadding: EdgeInsets.zero,
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () {
+          IosDialogActions(
+            cancelLabel: '取消',
+            confirmLabel: '保存',
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () {
               repo.updateSong(song.id, titleController.text, artistController.text);
               Navigator.pop(context);
             },
-            child: const Text('保存'),
           ),
         ],
       ),
@@ -328,9 +309,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     final tagsAsync = await tagRepo.watchAll().first;
     if (tagsAsync.isEmpty) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('暂无标签可选')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('暂无标签可选')));
       }
       return;
     }
@@ -343,17 +322,17 @@ class _SongsPageState extends ConsumerState<SongsPage> {
           items: tagsAsync.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
           onChanged: (v) => selectedTagId = v,
         ),
+        actionsPadding: EdgeInsets.zero,
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(
-            onPressed: () {
-              if (selectedTagId != null) {
-                tagRepo.attachSongs(selectedTagId!, songIds);
-              }
+          IosDialogActions(
+            cancelLabel: '取消',
+            confirmLabel: '确定',
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () {
+              if (selectedTagId != null) tagRepo.attachSongs(selectedTagId!, songIds);
               Navigator.pop(context);
             },
-            child: const Text('确认'),
-          )
+          ),
         ],
       ),
     );
@@ -365,9 +344,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     final queuePlaylists = await playlistRepo.watchByType(PlaylistType.kQueue).first;
     if (normalPlaylists.isEmpty && queuePlaylists.isEmpty) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('暂无可加入的歌单')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('暂无可加入的歌单')));
       }
       return;
     }
@@ -384,7 +361,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<PlaylistType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   items: const [
                     DropdownMenuItem(value: PlaylistType.normal, child: Text('普通歌单')),
                     DropdownMenuItem(value: PlaylistType.kQueue, child: Text('KQueue 队列')),
@@ -404,24 +381,19 @@ class _SongsPageState extends ConsumerState<SongsPage> {
                 ),
               ],
             ),
+            actionsPadding: EdgeInsets.zero,
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-              FilledButton(
-                onPressed: () async {
+              IosDialogActions(
+                cancelLabel: '取消',
+                confirmLabel: '加入',
+                onCancel: () => Navigator.pop(context),
+                onConfirm: () async {
                   if (selectedPlaylistId != null) {
-                    await _handleAddToPlaylist(
-                      playlistRepo,
-                      selectedPlaylistId!,
-                      selectedType,
-                      songIds,
-                    );
+                    await _handleAddToPlaylist(playlistRepo, selectedPlaylistId!, selectedType, songIds);
                   }
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
+                  if (context.mounted) Navigator.pop(context);
                 },
-                child: const Text('加入'),
-              )
+              ),
             ],
           );
         },
@@ -442,8 +414,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     final existing = await repo.queueItems(playlistId).first;
     var position = existing.length;
     for (final songId in songIds) {
-      await repo.enqueue(playlistId, songId, position);
-      position += 1;
+      await repo.enqueue(playlistId, songId, position++);
     }
   }
 
@@ -466,7 +437,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
             ),
             ListTile(
               leading: const Icon(Icons.label_outline),
-              title: const Text('添加标签'),
+              title: const Text('加标签'),
               onTap: () => Navigator.pop(context, 'tag'),
             ),
             ListTile(
@@ -484,24 +455,21 @@ class _SongsPageState extends ConsumerState<SongsPage> {
       ),
     );
     if (action == null) return;
-    if (action == 'edit') {
-      await _editDialog(context, repo, song);
-    } else if (action == 'delete') {
-      await _confirmDelete(context, repo, [song.id]);
-    } else if (action == 'tag') {
-      await _addTags(context, [song.id]);
-    } else if (action == 'playlist') {
-      await _addToPlaylist(context, [song.id]);
-    } else if (action == 'batch') {
-      setState(() {
-        batchMode = true;
-        selectedIds
-          ..clear()
-          ..add(song.id);
-        selectionOrder
-          ..clear()
-          ..add(song.id);
-      });
+    switch (action) {
+      case 'edit':
+        await _editDialog(context, repo, song);
+      case 'delete':
+        await _confirmDelete(context, repo, [song.id]);
+      case 'tag':
+        await _addTags(context, [song.id]);
+      case 'playlist':
+        await _addToPlaylist(context, [song.id]);
+      case 'batch':
+        setState(() {
+          batchMode = true;
+          selectedIds..clear()..add(song.id);
+          selectionOrder..clear()..add(song.id);
+        });
     }
   }
 
@@ -515,26 +483,16 @@ class _SongsPageState extends ConsumerState<SongsPage> {
     List<int> songIds, {
     bool showCountDialog = false,
   }) async {
-    final confirmed = await _showConfirmDialog(
+    final confirmed = await showIosConfirmDialog(
       context,
       title: '确认删除',
       message: '确定要删除选中的歌曲吗？',
     );
-    if (!confirmed) return;
-    int successCount = 0;
-    final errors = <String>[];
+    if (confirmed != true) return;
+    var successCount = 0;
     for (final id in songIds) {
-      try {
-        await repo.deleteSong(id);
-        successCount += 1;
-      } catch (e) {
-        errors.add(e.toString());
-      }
-    }
-    if (errors.isNotEmpty) {
-      if (context.mounted) {
-        await _showErrorDialog(context, '删除失败：${errors.first}');
-      }
+      await repo.deleteSong(id);
+      successCount++;
     }
     if (showCountDialog && context.mounted) {
       await showDialog(
@@ -542,44 +500,11 @@ class _SongsPageState extends ConsumerState<SongsPage> {
         builder: (context) => AlertDialog(
           title: const Text('删除完成'),
           content: Text('成功删除 $successCount 首歌曲'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
-          ],
+          actionsPadding: EdgeInsets.zero,
+          actions: [IosDialogDismiss(onPressed: () => Navigator.pop(context))],
         ),
       );
       _exitBatchMode();
     }
-  }
-
-  Future<bool> _showConfirmDialog(
-    BuildContext context, {
-    required String title,
-    required String message,
-  }) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
-        ],
-      ),
-    );
-    return result ?? false;
-  }
-
-  Future<void> _showErrorDialog(BuildContext context, String message) {
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('操作失败'),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
-        ],
-      ),
-    );
   }
 }

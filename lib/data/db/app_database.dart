@@ -5,11 +5,19 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../constants/preset_tags.dart';
 import '../../service/normalize.dart';
 
 part 'app_database.g.dart';
 
 enum SongUpsertResult { created, existed }
+
+class TagCountRow {
+  const TagCountRow({required this.tag, required this.songCount});
+
+  final Tag tag;
+  final int songCount;
+}
 
 @DriftDatabase(
   tables: [Songs, Tags, SongTags, Playlists, PlaylistSongs, QueueItems],
@@ -38,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   Future<void> seed() async {
-    await tagDao.ensurePresetTags(['开嗓', '收尾', '合唱']);
+    await tagDao.ensurePresetTags(presetTagNames);
   }
 }
 
@@ -302,6 +310,47 @@ class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
     query.where(db.songTags.tagId.equals(tagId));
     query.orderBy([OrderingTerm.asc(songs.title)]);
     return query.watch().map((rows) => rows.map((r) => r.readTable(songs)).toList());
+  }
+
+  Future<Set<int>> songIdsByTag(int tagId) async {
+    final rows = await (select(songTags)..where((t) => t.tagId.equals(tagId))).get();
+    return rows.map((r) => r.songId).toSet();
+  }
+
+  Stream<List<Tag>> watchTagsForSong(int songId) {
+    final query = select(tags).join([
+      innerJoin(songTags, songTags.tagId.equalsExp(tags.id)),
+    ]);
+    query.where(songTags.songId.equals(songId));
+    query.orderBy([OrderingTerm.asc(tags.name)]);
+    return query.watch().map((rows) => rows.map((r) => r.readTable(tags)).toList());
+  }
+
+  Stream<List<TagCountRow>> watchTagsWithCount() {
+    return customSelect(
+      '''
+      SELECT t.id AS id, t.name AS name, t.created_at AS created_at,
+             COUNT(st.song_id) AS song_count
+      FROM tags t
+      LEFT JOIN song_tags st ON t.id = st.tag_id
+      GROUP BY t.id
+      ORDER BY t.name ASC
+      ''',
+      readsFrom: {tags, songTags},
+    ).watch().map(
+          (rows) => rows
+              .map(
+                (row) => TagCountRow(
+                  tag: Tag(
+                    id: row.read<int>('id'),
+                    name: row.read<String>('name'),
+                    createdAt: row.read<DateTime>('created_at'),
+                  ),
+                  songCount: row.read<int>('song_count'),
+                ),
+              )
+              .toList(),
+        );
   }
 }
 

@@ -5,8 +5,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../data/db/app_database.dart';
 import '../../repository/playlist_repository.dart';
 import '../../repository/song_repository.dart';
+import '../../service/normalize.dart';
 import '../../state/providers.dart';
-import '../../service/kqueue_text_service.dart';
 import '../widgets/ios_components.dart';
 
 class QueuePage extends ConsumerStatefulWidget {
@@ -55,7 +55,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final items = snapshot.data!;
-          if (items.isEmpty) return const Center(child: Text('队列为空'));
+          if (items.isEmpty) return Center(child: Text('队列为空'));
           return ReorderableListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             itemCount: items.length,
@@ -79,9 +79,9 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                     ),
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: const Text(
+                    child: Text(
                       '删除',
-                      style: TextStyle(color: AppColors.surface, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: AppColors.surface, fontWeight: FontWeight.w600),
                     ),
                   ),
                   confirmDismiss: (_) => _confirmRemoveItem(context),
@@ -142,7 +142,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
                   border: Border(
                     top: BorderSide(
                       color: Theme.of(context).dividerColor,
@@ -156,18 +156,18 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                   children: [
                     FilledButton.tonal(
                       onPressed: () => _handleMoveSelected(context, repo),
-                      child: const Text('移动到...'),
+                      child: Text('移动到...'),
                     ),
                     FilledButton.tonal(
                       onPressed: selectedItemIds.isEmpty
                           ? null
                           : () => _confirmDeleteSelected(context, repo),
-                      child: const Text('删除所选'),
+                      child: Text('删除所选'),
                     ),
                     Text('${selectedItemIds.length} 已选'),
                     TextButton(
                       onPressed: _exitSelectionMode,
-                      child: const Text('取消'),
+                      child: Text('取消'),
                     ),
                   ],
                 ),
@@ -193,21 +193,25 @@ class _QueuePageState extends ConsumerState<QueuePage> {
           final filtered = keyword.isEmpty
               ? allSongs
               : allSongs
-                  .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
+                  .where((s) => matchesSongKeyword(
+                        titleNorm: s.titleNorm,
+                        artistNorm: s.artistNorm,
+                        keyword: keyword,
+                      ))
                   .toList();
           final selectedSongs = selectedOrder
               .map((id) => allSongs.firstWhere((song) => song.id == id))
               .toList();
           final maxListHeight = MediaQuery.of(context).size.height * 0.45;
           return AlertDialog(
-            title: const Text('添加歌曲到队列'),
+            title: Text('添加歌曲到队列'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
                       hintText: '搜索歌曲',
                     ),
                     onChanged: (value) => setState(() => keyword = value),
@@ -218,13 +222,13 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                       width: double.maxFinite,
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                        color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('已选顺序'),
+                          Text('已选顺序'),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
@@ -253,7 +257,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                     width: double.maxFinite,
                     height: maxListHeight,
                     child: filtered.isEmpty
-                        ? const Center(child: Text('暂无匹配歌曲'))
+                        ? Center(child: Text('暂无匹配歌曲'))
                         : ListView.builder(
                             itemCount: filtered.length,
                             itemBuilder: (context, index) {
@@ -264,7 +268,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                                 subtitle: Text(song.artist),
                                 trailing: Icon(selected ? Icons.check_circle : Icons.add),
                                 tileColor: selected
-                                    ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3)
+                                    ? Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3)
                                     : null,
                                 onTap: () {
                                   setState(() {
@@ -284,23 +288,22 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                 ],
               ),
             ),
+            actionsPadding: EdgeInsets.zero,
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
-              FilledButton(
-                onPressed: selectedOrder.isEmpty
-                    ? null
-                    : () async {
-                        final existing = await repo.queueItems(widget.playlist.id).first;
-                        var position = existing.length;
-                        for (final songId in selectedOrder) {
-                          await repo.enqueue(widget.playlist.id, songId, position);
-                          position += 1;
-                        }
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                        }
-                      },
-                child: const Text('添加'),
+              IosDialogActions(
+                cancelLabel: '取消',
+                confirmLabel: '添加',
+                confirmEnabled: selectedOrder.isNotEmpty,
+                onCancel: () => Navigator.pop(dialogContext),
+                onConfirm: () async {
+                  final existing = await repo.queueItems(widget.playlist.id).first;
+                  var position = existing.length;
+                  for (final songId in selectedOrder) {
+                    await repo.enqueue(widget.playlist.id, songId, position);
+                    position += 1;
+                  }
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                },
               ),
             ],
           );
@@ -350,7 +353,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
   ) async {
     if (selectedItemIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择歌曲')),
+        SnackBar(content: Text('请先选择歌曲')),
       );
       return;
     }
@@ -381,20 +384,14 @@ class _QueuePageState extends ConsumerState<QueuePage> {
   ) async {
     if (selectedItemIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择歌曲')),
+        SnackBar(content: Text('请先选择歌曲')),
       );
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除选中的 ${selectedItemIds.length} 首歌曲吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
-        ],
-      ),
+    final confirmed = await showIosConfirmDialog(
+      context,
+      title: '确认删除',
+      message: '确定要删除选中的 ${selectedItemIds.length} 首歌曲吗？',
     );
     if (confirmed != true) return;
     for (final id in selectedItemIds) {
@@ -420,13 +417,13 @@ class _QueuePageState extends ConsumerState<QueuePage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('移动到...'),
+          title: Text('移动到...'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '目标位置 (1..N+1)'),
+                decoration: InputDecoration(labelText: '目标位置 (1..N+1)'),
                 onChanged: (value) {
                   final parsed = int.tryParse(value.trim());
                   setState(() {
@@ -438,7 +435,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 value: anchorItemId,
-                decoration: const InputDecoration(labelText: '或选择歌曲'),
+                decoration: InputDecoration(labelText: '或选择歌曲'),
                 items: availableAnchors
                     .map(
                       (entry) => DropdownMenuItem(
@@ -463,7 +460,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                         ? null
                         : (value) => setState(() => insertBelow = value ?? false),
                   ),
-                  const Text('插到该歌曲下方'),
+                  Text('插入到该歌曲下方'),
                 ],
               ),
               if (errorText != null)
@@ -473,13 +470,13 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                 ),
             ],
           ),
+          actionsPadding: EdgeInsets.zero,
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () {
+            IosDialogActions(
+              cancelLabel: '取消',
+              confirmLabel: '确认',
+              onCancel: () => Navigator.pop(dialogContext),
+              onConfirm: () {
                 if (anchorItemId == null && position == null) {
                   setState(() => errorText = '请输入目标位置或选择歌曲');
                   return;
@@ -501,7 +498,6 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                   _MoveTarget(position: position ?? maxPosition),
                 );
               },
-              child: const Text('确认'),
             ),
           ],
         ),
@@ -510,16 +506,10 @@ class _QueuePageState extends ConsumerState<QueuePage> {
   }
 
   Future<bool> _confirmRemoveItem(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: const Text('确定要删除此歌曲吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认')),
-        ],
-      ),
+    final confirmed = await showIosConfirmDialog(
+      context,
+      title: '确认删除',
+      message: '确定要删除此歌曲吗？',
     );
     return confirmed ?? false;
   }

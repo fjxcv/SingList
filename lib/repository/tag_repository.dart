@@ -1,6 +1,17 @@
+import '../constants/preset_tags.dart';
 import '../data/db/app_database.dart';
 
-const Set<String> protectedTagNames = {'开嗓', '收尾', '合唱'};
+export '../constants/preset_tags.dart' show protectedTagNames;
+
+class TagWithCount {
+  const TagWithCount({required this.tag, required this.songCount});
+
+  final Tag tag;
+  final int songCount;
+
+  factory TagWithCount.fromRow(TagCountRow row) =>
+      TagWithCount(tag: row.tag, songCount: row.songCount);
+}
 
 class TagRepository {
   TagRepository(this.db);
@@ -8,6 +19,11 @@ class TagRepository {
   final AppDatabase db;
 
   Stream<List<Tag>> watchAll() => db.tagDao.watchAll();
+
+  Stream<List<TagWithCount>> watchTagsWithCount() =>
+      db.songTagDao.watchTagsWithCount().map(
+            (rows) => rows.map(TagWithCount.fromRow).toList(),
+          );
 
   Future<int> create(String name) => db.tagDao.create(name);
 
@@ -33,11 +49,13 @@ class TagRepository {
 
   Stream<List<Song>> songsByTag(int tagId) => db.songTagDao.songsByTag(tagId);
 
-  Future<void> attachSongs(int tagId, List<int> songIds) {
-    return db.songTagDao.addTagsToSongs(songIds: songIds, tagIds: [tagId]);
-  }
+  Future<Set<int>> songIdsByTag(int tagId) => db.songTagDao.songIdsByTag(tagId);
 
-  Future<void> detachSongs(int tagId, List<int> songIds) {
-    return db.songTagDao.removeTagsFromSongs(songIds: songIds, tagIds: [tagId]);
-  }
+  Future<void> attachSongs(int tagId, List<int> songIds) =>
+      db.songTagDao.addTagsToSongs(songIds: songIds, tagIds: [tagId]);
+
+  Future<void> detachSongs(int tagId, List<int> songIds) =>
+      db.songTagDao.removeTagsFromSongs(songIds: songIds, tagIds: [tagId]);
+
+  Stream<List<Tag>> watchTagsForSong(int songId) => db.songTagDao.watchTagsForSong(songId);
 }

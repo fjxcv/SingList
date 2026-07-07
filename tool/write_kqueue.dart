@@ -1,3 +1,7 @@
+import 'dart:io';
+
+void main() {
+  File('lib/service/kqueue_text_service.dart').writeAsStringSync(r'''
 import '../data/db/app_database.dart';
 import '../repository/playlist_repository.dart';
 import '../repository/song_repository.dart';
@@ -41,4 +45,20 @@ class KQueueTextService {
     final playlist = await playlistRepository.createQueueWithSongs(songIds);
     return KQueueImportResult(playlist: playlist, errorLines: parsed.errorLines);
   }
+}
+''');
+
+  final header = '#K\u6b4c\u6b4c\u5355';
+  final path = 'test/kqueue_text_service_test.dart';
+  var text = File(path).readAsStringSync();
+  text = text.replaceAllMapped(
+    RegExp(r"importFromText\('.*?\\nHello - Singer"),
+    (_) => "importFromText('$header\\nHello - Singer",
+  );
+  text = text.replaceAllMapped(
+    RegExp(r"expect\(text\.trim\(\), '.*?\\nSong1"),
+    (_) => "expect(text.trim(), '$header\\nSong1",
+  );
+  File(path).writeAsStringSync(text);
+  print('kqueue files fixed');
 }

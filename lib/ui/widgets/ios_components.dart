@@ -488,6 +488,87 @@ class IosSongCard extends StatelessWidget {
   }
 }
 
+class IosDialogActions extends StatelessWidget {
+  const IosDialogActions({
+    super.key,
+    required this.cancelLabel,
+    required this.confirmLabel,
+    required this.onCancel,
+    required this.onConfirm,
+    this.confirmEnabled = true,
+  });
+
+  final String cancelLabel;
+  final String confirmLabel;
+  final VoidCallback onCancel;
+  final VoidCallback onConfirm;
+  final bool confirmEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.tonal(onPressed: onCancel, child: Text(cancelLabel)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.tonal(
+              onPressed: confirmEnabled ? onConfirm : null,
+              child: Text(confirmLabel),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class IosDialogDismiss extends StatelessWidget {
+  const IosDialogDismiss({super.key, this.label = '\u77e5\u9053\u4e86', required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton.tonal(onPressed: onPressed, child: Text(label)),
+      ),
+    );
+  }
+}
+
+Future<bool?> showIosConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String cancelLabel = '\u53d6\u6d88',
+  String confirmLabel = '\u786e\u5b9a',
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actionsPadding: EdgeInsets.zero,
+      actions: [
+        IosDialogActions(
+          cancelLabel: cancelLabel,
+          confirmLabel: confirmLabel,
+          onCancel: () => Navigator.pop(context, false),
+          onConfirm: () => Navigator.pop(context, true),
+        ),
+      ],
+    ),
+  );
+}
+
 class IosSheetHandle extends StatelessWidget {
   const IosSheetHandle({super.key});
 

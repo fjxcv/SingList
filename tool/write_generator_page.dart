@@ -1,3 +1,11 @@
+import 'dart:io';
+
+void main() {
+  File('lib/ui/pages/generator_page.dart').writeAsStringSync(_content);
+  print('generator_page.dart written');
+}
+
+const _content = r'''
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,13 +26,13 @@ class GeneratorPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('生成 KQueue'),
+          title: const Text('\u751f\u6210 KQueue'),
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(44),
             child: TabBar(
               tabs: [
-                Tab(text: '刷歌模式'),
-                Tab(text: '随机生成'),
+                Tab(text: '\u5237\u6b4c\u6a21\u5f0f'),
+                Tab(text: '\u968f\u673a\u751f\u6210'),
               ],
             ),
           ),
@@ -76,17 +84,17 @@ class _BrushGeneratorTab extends ConsumerWidget {
                   runSpacing: 8,
                   children: [
                     ChoiceChip(
-                      label: const Text('全部歌曲'),
+                      label: const Text('\u5168\u90e8\u6b4c\u66f2'),
                       selected: state.sourceType == BrushSourceType.all,
                       onSelected: (_) => notifier.updateSourceType(BrushSourceType.all),
                     ),
                     ChoiceChip(
-                      label: const Text('按标签'),
+                      label: const Text('\u6309\u6807\u7b7e'),
                       selected: state.sourceType == BrushSourceType.tag,
                       onSelected: (_) => notifier.updateSourceType(BrushSourceType.tag),
                     ),
                     ChoiceChip(
-                      label: const Text('普通歌单'),
+                      label: const Text('\u666e\u901a\u6b4c\u5355'),
                       selected: state.sourceType == BrushSourceType.playlist,
                       onSelected: (_) => notifier.updateSourceType(BrushSourceType.playlist),
                     ),
@@ -96,7 +104,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                 if (state.sourceType == BrushSourceType.tag)
                   DropdownButtonFormField<int>(
                     value: state.selectedTagId,
-                    decoration: const InputDecoration(labelText: '选择标签'),
+                    decoration: const InputDecoration(labelText: '\u9009\u62e9\u6807\u7b7e'),
                     items: tags
                         .map((t) => DropdownMenuItem(value: t.id, child: Text(t.name)))
                         .toList(),
@@ -105,7 +113,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                 if (state.sourceType == BrushSourceType.playlist)
                   DropdownButtonFormField<int>(
                     value: state.selectedPlaylistId,
-                    decoration: const InputDecoration(labelText: '选择普通歌单'),
+                    decoration: const InputDecoration(labelText: '\u9009\u62e9\u666e\u901a\u6b4c\u5355'),
                     items: playlists
                         .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
                         .toList(),
@@ -118,7 +126,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                       value: state.warmupEnabled,
                       onChanged: notifier.updateWarmupEnabled,
                     ),
-                    const Text('开嗓曲'),
+                    const Text('\u5f00\u55d4\u6696\u573a\u66f2'),
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 56,
@@ -126,7 +134,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                         key: ValueKey('warmup-${state.warmupCount}'),
                         initialValue: state.warmupCount.toString(),
                         decoration: const InputDecoration(
-                          labelText: '数量',
+                          labelText: '\u6570\u91cf',
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         ),
@@ -159,7 +167,7 @@ class _BrushGeneratorTab extends ConsumerWidget {
                 onPressed:
                     state.isLoading ? null : () => _handleStartBrush(context, notifier),
                 icon: Icons.play_arrow,
-                label: '开始刷歌',
+                label: '\u5f00\u59cb\u5237\u6b4c',
                 isLoading: state.isLoading,
               ),
             ),
@@ -640,3 +648,4 @@ class _FinishCard extends StatelessWidget {
     );
   }
 }
+''';
