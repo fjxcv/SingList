@@ -397,19 +397,22 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
   }
 
   Future<void> addSongsToPlaylist(int playlistId, List<int> songIds) async {
+    if (songIds.isEmpty) return;
     await transaction(() async {
-      final existingCount = await (select(playlistSongs)
+      final existing = await (select(playlistSongs)
             ..where((tbl) => tbl.playlistId.equals(playlistId)))
           .get();
-      var idx = existingCount.length;
+      final existingSongIds = existing.map((e) => e.songId).toSet();
+      var position = existing.length;
+      final seen = <int>{};
       for (final songId in songIds) {
+        if (!seen.add(songId) || existingSongIds.contains(songId)) continue;
         await into(playlistSongs).insert(
           PlaylistSongsCompanion.insert(
             playlistId: playlistId,
             songId: songId,
-            position: Value(idx++),
+            position: Value(position++),
           ),
-          mode: InsertMode.insertOrIgnore,
         );
       }
     });

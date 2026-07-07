@@ -80,7 +80,7 @@ class _SongsPageState extends ConsumerState<SongsPage> {
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Expanded(
               child: songsAsync.when(
                 data: (songs) => _buildSongList(context, repo, songs),

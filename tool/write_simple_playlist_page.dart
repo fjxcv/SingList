@@ -1,3 +1,11 @@
+import 'dart:io';
+
+void main() {
+  File('lib/ui/pages/simple_playlist_page.dart').writeAsStringSync(_content);
+  print('simple_playlist_page.dart written');
+}
+
+const _content = r'''
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,7 +14,6 @@ import '../../repository/playlist_repository.dart';
 import '../../repository/song_repository.dart';
 import '../../service/normalize.dart';
 import '../../state/providers.dart';
-import '../widgets/collapsible_selected_chips.dart';
 import '../widgets/ios_components.dart';
 import 'song_detail_page.dart';
 
@@ -226,17 +233,26 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
                   ),
                   const SizedBox(height: 12),
                   if (selectedIds.isNotEmpty)
-                    CollapsibleSelectedChips(
-                      countLabelBuilder: (count) => '\u5df2\u9009 $count \u9996',
-                      chips: selectedIds
-                          .map((id) => allSongs.firstWhere((song) => song.id == id))
-                          .map(
-                            (song) => Chip(
-                              label: Text(song.title),
-                              onDeleted: () => setState(() => selectedIds.remove(song.id)),
-                            ),
-                          )
-                          .toList(),
+                    Container(
+                      width: double.maxFinite,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: selectedIds
+                            .map((id) => allSongs.firstWhere((song) => song.id == id))
+                            .map(
+                              (song) => Chip(
+                                label: Text(song.title),
+                                onDeleted: () => setState(() => selectedIds.remove(song.id)),
+                              ),
+                            )
+                            .toList(),
+                      ),
                     ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -319,3 +335,4 @@ class _SimplePlaylistPageState extends ConsumerState<SimplePlaylistPage> {
     if (mounted) _exitBatchMode();
   }
 }
+''';

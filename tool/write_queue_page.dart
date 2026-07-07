@@ -1,3 +1,11 @@
+import 'dart:io';
+
+void main() {
+  File('lib/ui/pages/queue_page.dart').writeAsStringSync(_content);
+  print('queue_page.dart written');
+}
+
+const _content = r'''
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -510,3 +518,4 @@ class _MoveTarget {
   final int? anchorItemId;
   final bool insertBelow;
 }
+''';

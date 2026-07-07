@@ -29,6 +29,7 @@ class TagsPage extends ConsumerWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
             Expanded(
               child: tagsAsync.when(
                 data: (tags) {

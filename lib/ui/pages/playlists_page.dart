@@ -60,7 +60,7 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
                               context,
                               repo,
                               p,
-                              subtitle: '可重复',
+                              subtitle: '歌曲不重复',
                               onOpen: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => SimplePlaylistPage(playlist: p)),
@@ -72,6 +72,7 @@ class _PlaylistsPageState extends ConsumerState<PlaylistsPage> {
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('加载失败: $e')),
                   ),
+                  const SizedBox(height: 8),
                   queues.when(
                     data: (items) => IosGroupedSection(
                       header: 'KQueue 队列',

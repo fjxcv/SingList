@@ -1,3 +1,7 @@
+import 'dart:io';
+
+void main() {
+  File('lib/ui/widgets/collapsible_selected_chips.dart').writeAsStringSync(r'''
 import 'package:flutter/material.dart';
 
 class CollapsibleSelectedChips extends StatefulWidget {
@@ -74,4 +78,7 @@ class _CollapsibleSelectedChipsState extends State<CollapsibleSelectedChips> {
   }
 
   static String _defaultCountLabel(int count) => '\u5df2\u9009 $count \u9879';
+}
+''');
+  print('done');
 }
