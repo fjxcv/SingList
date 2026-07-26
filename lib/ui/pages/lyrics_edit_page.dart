@@ -47,7 +47,7 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
   Future<void> _save() async {
     final japanese = _japaneseController.text;
     if (japanese.trim().isEmpty) {
-      setState(() => _validationMessage = '请输入日文注音歌词');
+      setState(() => _validationMessage = '请输入显示/注音歌词');
       return;
     }
     final error = const FuriganaParser().validate(japanese);
@@ -64,6 +64,7 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
       songId: widget.songId,
       japanese: japanese,
       translation: _translationController.text,
+      wasManuallyEdited: true,
     );
     if (mounted) Navigator.pop(context, true);
   }
@@ -118,7 +119,7 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
             minLines: 8,
             maxLines: null,
             decoration: InputDecoration(
-              labelText: '日文注音歌词',
+              labelText: '显示/注音歌词',
               alignLabelWithHint: true,
               errorText: _validationMessage,
               border: const OutlineInputBorder(),

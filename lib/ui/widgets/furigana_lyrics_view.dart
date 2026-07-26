@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../lyrics/furigana_parser.dart';
 
+const _japaneseLocale = Locale('ja');
+const _japaneseFontFallback = <String>[
+  'Noto Sans JP',
+  'Noto Sans CJK JP',
+  'Yu Gothic',
+  'Meiryo',
+  'sans-serif',
+];
+
 class FuriganaLyricsView extends StatelessWidget {
   const FuriganaLyricsView({
     super.key,
@@ -41,7 +50,8 @@ class FuriganaLyricsView extends StatelessWidget {
                   SizedBox(height: fontSize * 1.65)
                 else
                   Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.end,
+                    runSpacing: fontSize * 0.28,
+                    crossAxisAlignment: WrapCrossAlignment.start,
                     children: [
                       for (final segment in line.segments)
                         if (segment.hasReading)
@@ -53,13 +63,10 @@ class FuriganaLyricsView extends StatelessWidget {
                           )
                         else
                           for (final rune in segment.text.runes)
-                            Text(
-                              String.fromCharCode(rune),
-                              style: TextStyle(
-                                fontSize: fontSize,
-                                height: 1.65,
-                                color: foreground,
-                              ),
+                            _PlainJapaneseText(
+                              text: String.fromCharCode(rune),
+                              fontSize: fontSize,
+                              color: foreground,
                             ),
                     ],
                   ),
@@ -83,6 +90,36 @@ class FuriganaLyricsView extends StatelessWidget {
   }
 }
 
+class _PlainJapaneseText extends StatelessWidget {
+  const _PlainJapaneseText({
+    required this.text,
+    required this.fontSize,
+    required this.color,
+  });
+
+  final String text;
+  final double fontSize;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: fontSize * 0.5),
+      child: Text(
+        text,
+        locale: _japaneseLocale,
+        style: TextStyle(
+          fontSize: fontSize,
+          height: 1.12,
+          fontWeight: FontWeight.w400,
+          fontFamilyFallback: _japaneseFontFallback,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
 class _RubyText extends StatelessWidget {
   const _RubyText({
     required this.text,
@@ -100,22 +137,45 @@ class _RubyText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: Column(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            reading,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: fontSize * 0.46,
-              height: 1.05,
-              color: color,
-            ),
-          ),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: fontSize, height: 1.12, color: color),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: fontSize * 0.5,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Text(
+                    reading,
+                    locale: _japaneseLocale,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: fontSize * 0.42,
+                      height: 1,
+                      fontWeight: FontWeight.w400,
+                      fontFamilyFallback: _japaneseFontFallback,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ),
+              Text(
+                text,
+                locale: _japaneseLocale,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  height: 1.12,
+                  fontWeight: FontWeight.w400,
+                  fontFamilyFallback: _japaneseFontFallback,
+                  color: color,
+                ),
+              ),
+            ],
           ),
         ],
       ),
