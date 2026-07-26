@@ -1562,6 +1562,58 @@ class $SongLyricsTable extends SongLyrics
           type: DriftSqlType.string,
           requiredDuringInsert: false,
           defaultValue: const Constant(''));
+  static const VerificationMeta _originalTextMeta =
+      const VerificationMeta('originalText');
+  @override
+  late final GeneratedColumn<String> originalText = GeneratedColumn<String>(
+      'original_text', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _languageCodeMeta =
+      const VerificationMeta('languageCode');
+  @override
+  late final GeneratedColumn<String> languageCode = GeneratedColumn<String>(
+      'language_code', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sourceNameMeta =
+      const VerificationMeta('sourceName');
+  @override
+  late final GeneratedColumn<String> sourceName = GeneratedColumn<String>(
+      'source_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sourceUrlMeta =
+      const VerificationMeta('sourceUrl');
+  @override
+  late final GeneratedColumn<String> sourceUrl = GeneratedColumn<String>(
+      'source_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _versionLabelMeta =
+      const VerificationMeta('versionLabel');
+  @override
+  late final GeneratedColumn<String> versionLabel = GeneratedColumn<String>(
+      'version_label', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _aiProviderMeta =
+      const VerificationMeta('aiProvider');
+  @override
+  late final GeneratedColumn<String> aiProvider = GeneratedColumn<String>(
+      'ai_provider', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _aiModelMeta =
+      const VerificationMeta('aiModel');
+  @override
+  late final GeneratedColumn<String> aiModel = GeneratedColumn<String>(
+      'ai_model', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _wasManuallyEditedMeta =
+      const VerificationMeta('wasManuallyEdited');
+  @override
+  late final GeneratedColumn<bool> wasManuallyEdited = GeneratedColumn<bool>(
+      'was_manually_edited', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("was_manually_edited" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -1571,8 +1623,20 @@ class $SongLyricsTable extends SongLyrics
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
   @override
-  List<GeneratedColumn> get $columns =>
-      [songId, japaneseText, chineseTranslation, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        songId,
+        japaneseText,
+        chineseTranslation,
+        originalText,
+        languageCode,
+        sourceName,
+        sourceUrl,
+        versionLabel,
+        aiProvider,
+        aiModel,
+        wasManuallyEdited,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1601,6 +1665,50 @@ class $SongLyricsTable extends SongLyrics
           chineseTranslation.isAcceptableOrUnknown(
               data['chinese_translation']!, _chineseTranslationMeta));
     }
+    if (data.containsKey('original_text')) {
+      context.handle(
+          _originalTextMeta,
+          originalText.isAcceptableOrUnknown(
+              data['original_text']!, _originalTextMeta));
+    }
+    if (data.containsKey('language_code')) {
+      context.handle(
+          _languageCodeMeta,
+          languageCode.isAcceptableOrUnknown(
+              data['language_code']!, _languageCodeMeta));
+    }
+    if (data.containsKey('source_name')) {
+      context.handle(
+          _sourceNameMeta,
+          sourceName.isAcceptableOrUnknown(
+              data['source_name']!, _sourceNameMeta));
+    }
+    if (data.containsKey('source_url')) {
+      context.handle(_sourceUrlMeta,
+          sourceUrl.isAcceptableOrUnknown(data['source_url']!, _sourceUrlMeta));
+    }
+    if (data.containsKey('version_label')) {
+      context.handle(
+          _versionLabelMeta,
+          versionLabel.isAcceptableOrUnknown(
+              data['version_label']!, _versionLabelMeta));
+    }
+    if (data.containsKey('ai_provider')) {
+      context.handle(
+          _aiProviderMeta,
+          aiProvider.isAcceptableOrUnknown(
+              data['ai_provider']!, _aiProviderMeta));
+    }
+    if (data.containsKey('ai_model')) {
+      context.handle(_aiModelMeta,
+          aiModel.isAcceptableOrUnknown(data['ai_model']!, _aiModelMeta));
+    }
+    if (data.containsKey('was_manually_edited')) {
+      context.handle(
+          _wasManuallyEditedMeta,
+          wasManuallyEdited.isAcceptableOrUnknown(
+              data['was_manually_edited']!, _wasManuallyEditedMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -1620,6 +1728,22 @@ class $SongLyricsTable extends SongLyrics
           .read(DriftSqlType.string, data['${effectivePrefix}japanese_text'])!,
       chineseTranslation: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}chinese_translation'])!,
+      originalText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}original_text']),
+      languageCode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}language_code']),
+      sourceName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_name']),
+      sourceUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_url']),
+      versionLabel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}version_label']),
+      aiProvider: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ai_provider']),
+      aiModel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ai_model']),
+      wasManuallyEdited: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}was_manually_edited'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
@@ -1635,11 +1759,27 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
   final int songId;
   final String japaneseText;
   final String chineseTranslation;
+  final String? originalText;
+  final String? languageCode;
+  final String? sourceName;
+  final String? sourceUrl;
+  final String? versionLabel;
+  final String? aiProvider;
+  final String? aiModel;
+  final bool wasManuallyEdited;
   final DateTime updatedAt;
   const SongLyric(
       {required this.songId,
       required this.japaneseText,
       required this.chineseTranslation,
+      this.originalText,
+      this.languageCode,
+      this.sourceName,
+      this.sourceUrl,
+      this.versionLabel,
+      this.aiProvider,
+      this.aiModel,
+      required this.wasManuallyEdited,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1647,6 +1787,28 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
     map['song_id'] = Variable<int>(songId);
     map['japanese_text'] = Variable<String>(japaneseText);
     map['chinese_translation'] = Variable<String>(chineseTranslation);
+    if (!nullToAbsent || originalText != null) {
+      map['original_text'] = Variable<String>(originalText);
+    }
+    if (!nullToAbsent || languageCode != null) {
+      map['language_code'] = Variable<String>(languageCode);
+    }
+    if (!nullToAbsent || sourceName != null) {
+      map['source_name'] = Variable<String>(sourceName);
+    }
+    if (!nullToAbsent || sourceUrl != null) {
+      map['source_url'] = Variable<String>(sourceUrl);
+    }
+    if (!nullToAbsent || versionLabel != null) {
+      map['version_label'] = Variable<String>(versionLabel);
+    }
+    if (!nullToAbsent || aiProvider != null) {
+      map['ai_provider'] = Variable<String>(aiProvider);
+    }
+    if (!nullToAbsent || aiModel != null) {
+      map['ai_model'] = Variable<String>(aiModel);
+    }
+    map['was_manually_edited'] = Variable<bool>(wasManuallyEdited);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -1656,6 +1818,28 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
       songId: Value(songId),
       japaneseText: Value(japaneseText),
       chineseTranslation: Value(chineseTranslation),
+      originalText: originalText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalText),
+      languageCode: languageCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(languageCode),
+      sourceName: sourceName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceName),
+      sourceUrl: sourceUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceUrl),
+      versionLabel: versionLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(versionLabel),
+      aiProvider: aiProvider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(aiProvider),
+      aiModel: aiModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(aiModel),
+      wasManuallyEdited: Value(wasManuallyEdited),
       updatedAt: Value(updatedAt),
     );
   }
@@ -1668,6 +1852,14 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
       japaneseText: serializer.fromJson<String>(json['japaneseText']),
       chineseTranslation:
           serializer.fromJson<String>(json['chineseTranslation']),
+      originalText: serializer.fromJson<String?>(json['originalText']),
+      languageCode: serializer.fromJson<String?>(json['languageCode']),
+      sourceName: serializer.fromJson<String?>(json['sourceName']),
+      sourceUrl: serializer.fromJson<String?>(json['sourceUrl']),
+      versionLabel: serializer.fromJson<String?>(json['versionLabel']),
+      aiProvider: serializer.fromJson<String?>(json['aiProvider']),
+      aiModel: serializer.fromJson<String?>(json['aiModel']),
+      wasManuallyEdited: serializer.fromJson<bool>(json['wasManuallyEdited']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -1678,6 +1870,14 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
       'songId': serializer.toJson<int>(songId),
       'japaneseText': serializer.toJson<String>(japaneseText),
       'chineseTranslation': serializer.toJson<String>(chineseTranslation),
+      'originalText': serializer.toJson<String?>(originalText),
+      'languageCode': serializer.toJson<String?>(languageCode),
+      'sourceName': serializer.toJson<String?>(sourceName),
+      'sourceUrl': serializer.toJson<String?>(sourceUrl),
+      'versionLabel': serializer.toJson<String?>(versionLabel),
+      'aiProvider': serializer.toJson<String?>(aiProvider),
+      'aiModel': serializer.toJson<String?>(aiModel),
+      'wasManuallyEdited': serializer.toJson<bool>(wasManuallyEdited),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -1686,11 +1886,30 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
           {int? songId,
           String? japaneseText,
           String? chineseTranslation,
+          Value<String?> originalText = const Value.absent(),
+          Value<String?> languageCode = const Value.absent(),
+          Value<String?> sourceName = const Value.absent(),
+          Value<String?> sourceUrl = const Value.absent(),
+          Value<String?> versionLabel = const Value.absent(),
+          Value<String?> aiProvider = const Value.absent(),
+          Value<String?> aiModel = const Value.absent(),
+          bool? wasManuallyEdited,
           DateTime? updatedAt}) =>
       SongLyric(
         songId: songId ?? this.songId,
         japaneseText: japaneseText ?? this.japaneseText,
         chineseTranslation: chineseTranslation ?? this.chineseTranslation,
+        originalText:
+            originalText.present ? originalText.value : this.originalText,
+        languageCode:
+            languageCode.present ? languageCode.value : this.languageCode,
+        sourceName: sourceName.present ? sourceName.value : this.sourceName,
+        sourceUrl: sourceUrl.present ? sourceUrl.value : this.sourceUrl,
+        versionLabel:
+            versionLabel.present ? versionLabel.value : this.versionLabel,
+        aiProvider: aiProvider.present ? aiProvider.value : this.aiProvider,
+        aiModel: aiModel.present ? aiModel.value : this.aiModel,
+        wasManuallyEdited: wasManuallyEdited ?? this.wasManuallyEdited,
         updatedAt: updatedAt ?? this.updatedAt,
       );
   SongLyric copyWithCompanion(SongLyricsCompanion data) {
@@ -1702,6 +1921,24 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
       chineseTranslation: data.chineseTranslation.present
           ? data.chineseTranslation.value
           : this.chineseTranslation,
+      originalText: data.originalText.present
+          ? data.originalText.value
+          : this.originalText,
+      languageCode: data.languageCode.present
+          ? data.languageCode.value
+          : this.languageCode,
+      sourceName:
+          data.sourceName.present ? data.sourceName.value : this.sourceName,
+      sourceUrl: data.sourceUrl.present ? data.sourceUrl.value : this.sourceUrl,
+      versionLabel: data.versionLabel.present
+          ? data.versionLabel.value
+          : this.versionLabel,
+      aiProvider:
+          data.aiProvider.present ? data.aiProvider.value : this.aiProvider,
+      aiModel: data.aiModel.present ? data.aiModel.value : this.aiModel,
+      wasManuallyEdited: data.wasManuallyEdited.present
+          ? data.wasManuallyEdited.value
+          : this.wasManuallyEdited,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -1712,14 +1949,33 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
           ..write('songId: $songId, ')
           ..write('japaneseText: $japaneseText, ')
           ..write('chineseTranslation: $chineseTranslation, ')
+          ..write('originalText: $originalText, ')
+          ..write('languageCode: $languageCode, ')
+          ..write('sourceName: $sourceName, ')
+          ..write('sourceUrl: $sourceUrl, ')
+          ..write('versionLabel: $versionLabel, ')
+          ..write('aiProvider: $aiProvider, ')
+          ..write('aiModel: $aiModel, ')
+          ..write('wasManuallyEdited: $wasManuallyEdited, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(songId, japaneseText, chineseTranslation, updatedAt);
+  int get hashCode => Object.hash(
+      songId,
+      japaneseText,
+      chineseTranslation,
+      originalText,
+      languageCode,
+      sourceName,
+      sourceUrl,
+      versionLabel,
+      aiProvider,
+      aiModel,
+      wasManuallyEdited,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1727,6 +1983,14 @@ class SongLyric extends DataClass implements Insertable<SongLyric> {
           other.songId == this.songId &&
           other.japaneseText == this.japaneseText &&
           other.chineseTranslation == this.chineseTranslation &&
+          other.originalText == this.originalText &&
+          other.languageCode == this.languageCode &&
+          other.sourceName == this.sourceName &&
+          other.sourceUrl == this.sourceUrl &&
+          other.versionLabel == this.versionLabel &&
+          other.aiProvider == this.aiProvider &&
+          other.aiModel == this.aiModel &&
+          other.wasManuallyEdited == this.wasManuallyEdited &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -1734,29 +1998,69 @@ class SongLyricsCompanion extends UpdateCompanion<SongLyric> {
   final Value<int> songId;
   final Value<String> japaneseText;
   final Value<String> chineseTranslation;
+  final Value<String?> originalText;
+  final Value<String?> languageCode;
+  final Value<String?> sourceName;
+  final Value<String?> sourceUrl;
+  final Value<String?> versionLabel;
+  final Value<String?> aiProvider;
+  final Value<String?> aiModel;
+  final Value<bool> wasManuallyEdited;
   final Value<DateTime> updatedAt;
   const SongLyricsCompanion({
     this.songId = const Value.absent(),
     this.japaneseText = const Value.absent(),
     this.chineseTranslation = const Value.absent(),
+    this.originalText = const Value.absent(),
+    this.languageCode = const Value.absent(),
+    this.sourceName = const Value.absent(),
+    this.sourceUrl = const Value.absent(),
+    this.versionLabel = const Value.absent(),
+    this.aiProvider = const Value.absent(),
+    this.aiModel = const Value.absent(),
+    this.wasManuallyEdited = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   SongLyricsCompanion.insert({
     this.songId = const Value.absent(),
     required String japaneseText,
     this.chineseTranslation = const Value.absent(),
+    this.originalText = const Value.absent(),
+    this.languageCode = const Value.absent(),
+    this.sourceName = const Value.absent(),
+    this.sourceUrl = const Value.absent(),
+    this.versionLabel = const Value.absent(),
+    this.aiProvider = const Value.absent(),
+    this.aiModel = const Value.absent(),
+    this.wasManuallyEdited = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : japaneseText = Value(japaneseText);
   static Insertable<SongLyric> custom({
     Expression<int>? songId,
     Expression<String>? japaneseText,
     Expression<String>? chineseTranslation,
+    Expression<String>? originalText,
+    Expression<String>? languageCode,
+    Expression<String>? sourceName,
+    Expression<String>? sourceUrl,
+    Expression<String>? versionLabel,
+    Expression<String>? aiProvider,
+    Expression<String>? aiModel,
+    Expression<bool>? wasManuallyEdited,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (songId != null) 'song_id': songId,
       if (japaneseText != null) 'japanese_text': japaneseText,
       if (chineseTranslation != null) 'chinese_translation': chineseTranslation,
+      if (originalText != null) 'original_text': originalText,
+      if (languageCode != null) 'language_code': languageCode,
+      if (sourceName != null) 'source_name': sourceName,
+      if (sourceUrl != null) 'source_url': sourceUrl,
+      if (versionLabel != null) 'version_label': versionLabel,
+      if (aiProvider != null) 'ai_provider': aiProvider,
+      if (aiModel != null) 'ai_model': aiModel,
+      if (wasManuallyEdited != null) 'was_manually_edited': wasManuallyEdited,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
@@ -1765,11 +2069,27 @@ class SongLyricsCompanion extends UpdateCompanion<SongLyric> {
       {Value<int>? songId,
       Value<String>? japaneseText,
       Value<String>? chineseTranslation,
+      Value<String?>? originalText,
+      Value<String?>? languageCode,
+      Value<String?>? sourceName,
+      Value<String?>? sourceUrl,
+      Value<String?>? versionLabel,
+      Value<String?>? aiProvider,
+      Value<String?>? aiModel,
+      Value<bool>? wasManuallyEdited,
       Value<DateTime>? updatedAt}) {
     return SongLyricsCompanion(
       songId: songId ?? this.songId,
       japaneseText: japaneseText ?? this.japaneseText,
       chineseTranslation: chineseTranslation ?? this.chineseTranslation,
+      originalText: originalText ?? this.originalText,
+      languageCode: languageCode ?? this.languageCode,
+      sourceName: sourceName ?? this.sourceName,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+      versionLabel: versionLabel ?? this.versionLabel,
+      aiProvider: aiProvider ?? this.aiProvider,
+      aiModel: aiModel ?? this.aiModel,
+      wasManuallyEdited: wasManuallyEdited ?? this.wasManuallyEdited,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -1786,6 +2106,30 @@ class SongLyricsCompanion extends UpdateCompanion<SongLyric> {
     if (chineseTranslation.present) {
       map['chinese_translation'] = Variable<String>(chineseTranslation.value);
     }
+    if (originalText.present) {
+      map['original_text'] = Variable<String>(originalText.value);
+    }
+    if (languageCode.present) {
+      map['language_code'] = Variable<String>(languageCode.value);
+    }
+    if (sourceName.present) {
+      map['source_name'] = Variable<String>(sourceName.value);
+    }
+    if (sourceUrl.present) {
+      map['source_url'] = Variable<String>(sourceUrl.value);
+    }
+    if (versionLabel.present) {
+      map['version_label'] = Variable<String>(versionLabel.value);
+    }
+    if (aiProvider.present) {
+      map['ai_provider'] = Variable<String>(aiProvider.value);
+    }
+    if (aiModel.present) {
+      map['ai_model'] = Variable<String>(aiModel.value);
+    }
+    if (wasManuallyEdited.present) {
+      map['was_manually_edited'] = Variable<bool>(wasManuallyEdited.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1798,6 +2142,14 @@ class SongLyricsCompanion extends UpdateCompanion<SongLyric> {
           ..write('songId: $songId, ')
           ..write('japaneseText: $japaneseText, ')
           ..write('chineseTranslation: $chineseTranslation, ')
+          ..write('originalText: $originalText, ')
+          ..write('languageCode: $languageCode, ')
+          ..write('sourceName: $sourceName, ')
+          ..write('sourceUrl: $sourceUrl, ')
+          ..write('versionLabel: $versionLabel, ')
+          ..write('aiProvider: $aiProvider, ')
+          ..write('aiModel: $aiModel, ')
+          ..write('wasManuallyEdited: $wasManuallyEdited, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -3795,12 +4147,28 @@ typedef $$SongLyricsTableCreateCompanionBuilder = SongLyricsCompanion Function({
   Value<int> songId,
   required String japaneseText,
   Value<String> chineseTranslation,
+  Value<String?> originalText,
+  Value<String?> languageCode,
+  Value<String?> sourceName,
+  Value<String?> sourceUrl,
+  Value<String?> versionLabel,
+  Value<String?> aiProvider,
+  Value<String?> aiModel,
+  Value<bool> wasManuallyEdited,
   Value<DateTime> updatedAt,
 });
 typedef $$SongLyricsTableUpdateCompanionBuilder = SongLyricsCompanion Function({
   Value<int> songId,
   Value<String> japaneseText,
   Value<String> chineseTranslation,
+  Value<String?> originalText,
+  Value<String?> languageCode,
+  Value<String?> sourceName,
+  Value<String?> sourceUrl,
+  Value<String?> versionLabel,
+  Value<String?> aiProvider,
+  Value<String?> aiModel,
+  Value<bool> wasManuallyEdited,
   Value<DateTime> updatedAt,
 });
 
@@ -3837,6 +4205,31 @@ class $$SongLyricsTableFilterComposer
 
   ColumnFilters<String> get chineseTranslation => $composableBuilder(
       column: $table.chineseTranslation,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get originalText => $composableBuilder(
+      column: $table.originalText, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get languageCode => $composableBuilder(
+      column: $table.languageCode, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceName => $composableBuilder(
+      column: $table.sourceName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceUrl => $composableBuilder(
+      column: $table.sourceUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get versionLabel => $composableBuilder(
+      column: $table.versionLabel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get aiProvider => $composableBuilder(
+      column: $table.aiProvider, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get aiModel => $composableBuilder(
+      column: $table.aiModel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get wasManuallyEdited => $composableBuilder(
+      column: $table.wasManuallyEdited,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
@@ -3880,6 +4273,34 @@ class $$SongLyricsTableOrderingComposer
       column: $table.chineseTranslation,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get originalText => $composableBuilder(
+      column: $table.originalText,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get languageCode => $composableBuilder(
+      column: $table.languageCode,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceName => $composableBuilder(
+      column: $table.sourceName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceUrl => $composableBuilder(
+      column: $table.sourceUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get versionLabel => $composableBuilder(
+      column: $table.versionLabel,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get aiProvider => $composableBuilder(
+      column: $table.aiProvider, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get aiModel => $composableBuilder(
+      column: $table.aiModel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get wasManuallyEdited => $composableBuilder(
+      column: $table.wasManuallyEdited,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -3918,6 +4339,30 @@ class $$SongLyricsTableAnnotationComposer
 
   GeneratedColumn<String> get chineseTranslation => $composableBuilder(
       column: $table.chineseTranslation, builder: (column) => column);
+
+  GeneratedColumn<String> get originalText => $composableBuilder(
+      column: $table.originalText, builder: (column) => column);
+
+  GeneratedColumn<String> get languageCode => $composableBuilder(
+      column: $table.languageCode, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceName => $composableBuilder(
+      column: $table.sourceName, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceUrl =>
+      $composableBuilder(column: $table.sourceUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get versionLabel => $composableBuilder(
+      column: $table.versionLabel, builder: (column) => column);
+
+  GeneratedColumn<String> get aiProvider => $composableBuilder(
+      column: $table.aiProvider, builder: (column) => column);
+
+  GeneratedColumn<String> get aiModel =>
+      $composableBuilder(column: $table.aiModel, builder: (column) => column);
+
+  GeneratedColumn<bool> get wasManuallyEdited => $composableBuilder(
+      column: $table.wasManuallyEdited, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -3969,24 +4414,56 @@ class $$SongLyricsTableTableManager extends RootTableManager<
             Value<int> songId = const Value.absent(),
             Value<String> japaneseText = const Value.absent(),
             Value<String> chineseTranslation = const Value.absent(),
+            Value<String?> originalText = const Value.absent(),
+            Value<String?> languageCode = const Value.absent(),
+            Value<String?> sourceName = const Value.absent(),
+            Value<String?> sourceUrl = const Value.absent(),
+            Value<String?> versionLabel = const Value.absent(),
+            Value<String?> aiProvider = const Value.absent(),
+            Value<String?> aiModel = const Value.absent(),
+            Value<bool> wasManuallyEdited = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
           }) =>
               SongLyricsCompanion(
             songId: songId,
             japaneseText: japaneseText,
             chineseTranslation: chineseTranslation,
+            originalText: originalText,
+            languageCode: languageCode,
+            sourceName: sourceName,
+            sourceUrl: sourceUrl,
+            versionLabel: versionLabel,
+            aiProvider: aiProvider,
+            aiModel: aiModel,
+            wasManuallyEdited: wasManuallyEdited,
             updatedAt: updatedAt,
           ),
           createCompanionCallback: ({
             Value<int> songId = const Value.absent(),
             required String japaneseText,
             Value<String> chineseTranslation = const Value.absent(),
+            Value<String?> originalText = const Value.absent(),
+            Value<String?> languageCode = const Value.absent(),
+            Value<String?> sourceName = const Value.absent(),
+            Value<String?> sourceUrl = const Value.absent(),
+            Value<String?> versionLabel = const Value.absent(),
+            Value<String?> aiProvider = const Value.absent(),
+            Value<String?> aiModel = const Value.absent(),
+            Value<bool> wasManuallyEdited = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
           }) =>
               SongLyricsCompanion.insert(
             songId: songId,
             japaneseText: japaneseText,
             chineseTranslation: chineseTranslation,
+            originalText: originalText,
+            languageCode: languageCode,
+            sourceName: sourceName,
+            sourceUrl: sourceUrl,
+            versionLabel: versionLabel,
+            aiProvider: aiProvider,
+            aiModel: aiModel,
+            wasManuallyEdited: wasManuallyEdited,
             updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0

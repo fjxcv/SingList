@@ -48,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   LyricsDao get lyricsDao => LyricsDao(this);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -57,6 +57,15 @@ class AppDatabase extends _$AppDatabase {
           // migration is intentionally not repeated. Existing data is valid.
           if (from < 3) {
             await m.createTable(songLyrics);
+          } else if (from < 4) {
+            await m.addColumn(songLyrics, songLyrics.originalText);
+            await m.addColumn(songLyrics, songLyrics.languageCode);
+            await m.addColumn(songLyrics, songLyrics.sourceName);
+            await m.addColumn(songLyrics, songLyrics.sourceUrl);
+            await m.addColumn(songLyrics, songLyrics.versionLabel);
+            await m.addColumn(songLyrics, songLyrics.aiProvider);
+            await m.addColumn(songLyrics, songLyrics.aiModel);
+            await m.addColumn(songLyrics, songLyrics.wasManuallyEdited);
           }
         },
         beforeOpen: (details) async {
@@ -146,6 +155,15 @@ class SongLyrics extends Table {
       )();
   TextColumn get japaneseText => text()();
   TextColumn get chineseTranslation => text().withDefault(const Constant(''))();
+  TextColumn get originalText => text().nullable()();
+  TextColumn get languageCode => text().nullable()();
+  TextColumn get sourceName => text().nullable()();
+  TextColumn get sourceUrl => text().nullable()();
+  TextColumn get versionLabel => text().nullable()();
+  TextColumn get aiProvider => text().nullable()();
+  TextColumn get aiModel => text().nullable()();
+  BoolColumn get wasManuallyEdited =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -286,12 +304,35 @@ class LyricsDao extends DatabaseAccessor<AppDatabase> with _$LyricsDaoMixin {
     required int songId,
     required String japanese,
     required String translation,
+    String? originalText,
+    String? languageCode,
+    String? sourceName,
+    String? sourceUrl,
+    String? versionLabel,
+    String? aiProvider,
+    String? aiModel,
+    bool? wasManuallyEdited,
   }) {
     return into(songLyrics).insertOnConflictUpdate(
       SongLyricsCompanion.insert(
         songId: Value(songId),
         japaneseText: japanese,
         chineseTranslation: Value(translation),
+        originalText:
+            originalText == null ? const Value.absent() : Value(originalText),
+        languageCode:
+            languageCode == null ? const Value.absent() : Value(languageCode),
+        sourceName:
+            sourceName == null ? const Value.absent() : Value(sourceName),
+        sourceUrl: sourceUrl == null ? const Value.absent() : Value(sourceUrl),
+        versionLabel:
+            versionLabel == null ? const Value.absent() : Value(versionLabel),
+        aiProvider:
+            aiProvider == null ? const Value.absent() : Value(aiProvider),
+        aiModel: aiModel == null ? const Value.absent() : Value(aiModel),
+        wasManuallyEdited: wasManuallyEdited == null
+            ? const Value.absent()
+            : Value(wasManuallyEdited),
         updatedAt: Value(DateTime.now()),
       ),
     );

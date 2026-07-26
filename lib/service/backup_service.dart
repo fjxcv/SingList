@@ -27,7 +27,7 @@ class BackupService {
     final queues = await db.playlistDao.watchByType(PlaylistType.kQueue).first;
 
     final payload = <String, dynamic>{
-      'version': 2,
+      'version': 3,
       'exportedAt': DateTime.now().toIso8601String(),
       'songs': songs.map((s) {
         final songLyrics = lyricsBySongId[s.id];
@@ -38,6 +38,14 @@ class BackupService {
             'lyrics': {
               'japanese': songLyrics.japaneseText,
               'chineseTranslation': songLyrics.chineseTranslation,
+              'originalText': songLyrics.originalText,
+              'languageCode': songLyrics.languageCode,
+              'sourceName': songLyrics.sourceName,
+              'sourceUrl': songLyrics.sourceUrl,
+              'versionLabel': songLyrics.versionLabel,
+              'aiProvider': songLyrics.aiProvider,
+              'aiModel': songLyrics.aiModel,
+              'wasManuallyEdited': songLyrics.wasManuallyEdited,
             },
         };
       }).toList(),
@@ -88,6 +96,14 @@ class BackupService {
             translation: lyrics['chineseTranslation'] is String
                 ? lyrics['chineseTranslation'] as String
                 : '',
+            originalText: lyrics['originalText'] as String?,
+            languageCode: lyrics['languageCode'] as String?,
+            sourceName: lyrics['sourceName'] as String?,
+            sourceUrl: lyrics['sourceUrl'] as String?,
+            versionLabel: lyrics['versionLabel'] as String?,
+            aiProvider: lyrics['aiProvider'] as String?,
+            aiModel: lyrics['aiModel'] as String?,
+            wasManuallyEdited: lyrics['wasManuallyEdited'] as bool?,
           );
         }
       }

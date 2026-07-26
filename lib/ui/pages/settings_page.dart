@@ -7,6 +7,7 @@ import '../../service/duplicate_merge_service.dart';
 import '../../service/import_service.dart';
 import '../../service/settings_service.dart';
 import '../../state/providers.dart';
+import 'ai_settings_page.dart';
 import '../widgets/ios_components.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -26,7 +27,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _loadHistory() async {
-    final history = await ref.read(settingsServiceProvider).loadImportHistoryAsync();
+    final history =
+        await ref.read(settingsServiceProvider).loadImportHistoryAsync();
     if (mounted) setState(() => _history = history);
   }
 
@@ -50,7 +52,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: Text(
                       '设置',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(width: 48),
@@ -61,16 +64,37 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: ListView(
                 children: [
                   IosGroupedSection(
+                    header: 'AI 服务',
+                    children: [
+                      ListTile(
+                        title: const Text('AI 服务设置'),
+                        subtitle: const Text('配置服务商、模型和安全存储的 API Key'),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppColors.systemBlue,
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AiSettingsPage(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IosGroupedSection(
                     header: '备份',
                     children: [
                       ListTile(
                         title: const Text('导出备份'),
-                        trailing: const Icon(Icons.ios_share, color: AppColors.systemBlue),
+                        trailing: const Icon(Icons.ios_share,
+                            color: AppColors.systemBlue),
                         onTap: _exportBackup,
                       ),
                       ListTile(
                         title: const Text('从备份恢复'),
-                        trailing: const Icon(Icons.restore, color: AppColors.systemBlue),
+                        trailing: const Icon(Icons.restore,
+                            color: AppColors.systemBlue),
                         onTap: _restoreBackup,
                       ),
                     ],
@@ -80,7 +104,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     children: [
                       ListTile(
                         title: const Text('合并重复歌曲'),
-                        trailing: const Icon(Icons.merge_type, color: AppColors.systemBlue),
+                        trailing: const Icon(Icons.merge_type,
+                            color: AppColors.systemBlue),
                         onTap: _showDuplicateMerge,
                       ),
                     ],
@@ -91,8 +116,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       children: _history
                           .map(
                             (e) => ListTile(
-                              title: Text('${importTargetLabel(e.target)} · +${e.created} / 重复${e.existed}'),
-                              subtitle: Text(e.timestamp.toString().substring(0, 16)),
+                              title: Text(
+                                  '${importTargetLabel(e.target)} · +${e.created} / 重复${e.existed}'),
+                              subtitle:
+                                  Text(e.timestamp.toString().substring(0, 16)),
                             ),
                           )
                           .toList(),
@@ -120,11 +147,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       confirmLabel: '恢复',
     );
     if (confirmed != true) return;
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.custom, allowedExtensions: ['json']);
     if (result == null || result.files.single.path == null) return;
-    await ref.read(backupServiceProvider).restoreFromFile(result.files.single.path!);
+    await ref
+        .read(backupServiceProvider)
+        .restoreFromFile(result.files.single.path!);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('恢复完成')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('恢复完成')));
     }
   }
 
@@ -177,8 +208,10 @@ class _DuplicateMergePageState extends ConsumerState<DuplicateMergePage> {
             children: group.entries
                 .map(
                   (entry) => ListTile(
-                    title: Text('ID ${entry.song.id} · ${entry.song.createdAt.toString().substring(0, 10)}'),
-                    subtitle: Text('标签${entry.tagCount} · 歌单${entry.playlistCount} · 队列${entry.queueCount}'),
+                    title: Text(
+                        'ID ${entry.song.id} · ${entry.song.createdAt.toString().substring(0, 10)}'),
+                    subtitle: Text(
+                        '标签${entry.tagCount} · 歌单${entry.playlistCount} · 队列${entry.queueCount}'),
                     trailing: TextButton(
                       child: const Text('保留'),
                       onPressed: () => _merge(group, entry.song.id),
@@ -201,7 +234,8 @@ class _DuplicateMergePageState extends ConsumerState<DuplicateMergePage> {
     if (confirmed != true) return;
     await ref.read(duplicateMergeServiceProvider).mergeGroup(group, keepId);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('合并完成')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('合并完成')));
       Navigator.pop(context);
     }
   }

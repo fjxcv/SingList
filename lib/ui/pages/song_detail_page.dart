@@ -8,7 +8,9 @@ import '../../repository/song_repository.dart';
 import '../../repository/tag_repository.dart';
 import '../../state/providers.dart';
 import 'lyrics_edit_page.dart';
+import 'lyrics_search_page.dart';
 import 'lyrics_view_page.dart';
+import 'manual_lyrics_import_page.dart';
 import '../widgets/ios_components.dart';
 
 class SongDetailPage extends ConsumerStatefulWidget {
@@ -148,20 +150,32 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     return IosGroupedSection(
       header: '注音歌词',
       children: [
-        if (lyrics == null)
+        if (lyrics == null) ...[
           ListTile(
             leading: const Icon(
-              Icons.lyrics_outlined,
+              Icons.auto_awesome,
               color: AppColors.systemBlue,
             ),
             title: const Text(
-              '添加歌词',
+              '自动添加歌词',
               style: TextStyle(color: AppColors.systemBlue),
             ),
-            subtitle: const Text('添加日文注音歌词和中文翻译'),
-            onTap: () => _editLyrics(context, repository),
-          )
-        else ...[
+            subtitle: const Text('从 LRCLIB 选择版本，再由 AI 整理'),
+            onTap: () => _autoLyrics(context),
+          ),
+          ListTile(
+            leading: const Icon(
+              Icons.content_paste,
+              color: AppColors.systemBlue,
+            ),
+            title: const Text(
+              '手动添加歌词',
+              style: TextStyle(color: AppColors.systemBlue),
+            ),
+            subtitle: const Text('粘贴原始歌词，可选择 AI 整理或直接编辑'),
+            onTap: () => _manualLyrics(context),
+          ),
+        ] else ...[
           ListTile(
             leading: const Icon(Icons.lyrics_outlined),
             title: const Text('查看注音歌词'),
@@ -183,6 +197,12 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
             ),
           ),
           ListTile(
+            leading: const Icon(Icons.auto_awesome),
+            title: const Text('重新自动生成 / 更换版本'),
+            subtitle: const Text('确认保存前不会覆盖现有歌词'),
+            onTap: () => _autoLyrics(context),
+          ),
+          ListTile(
             leading: const Icon(Icons.edit_outlined),
             title: const Text('编辑歌词'),
             onTap: () => _editLyrics(context, repository, lyrics: lyrics),
@@ -200,6 +220,22 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
           ),
         ],
       ],
+    );
+  }
+
+  Future<void> _autoLyrics(BuildContext context) {
+    return Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => LyricsSearchPage(song: _song)),
+    );
+  }
+
+  Future<void> _manualLyrics(BuildContext context) {
+    return Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ManualLyricsImportPage(song: _song),
+      ),
     );
   }
 

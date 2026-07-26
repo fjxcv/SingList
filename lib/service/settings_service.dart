@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../ai/ai_config_repository.dart';
 import 'import_service.dart';
 
 class ImportHistoryEntry {
@@ -32,7 +33,8 @@ class ImportHistoryEntry {
         'playlistName': playlistName,
       };
 
-  factory ImportHistoryEntry.fromJson(Map<String, dynamic> json) => ImportHistoryEntry(
+  factory ImportHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      ImportHistoryEntry(
         timestamp: DateTime.parse(json['timestamp'] as String),
         target: ImportTarget.values.firstWhere((e) => e.name == json['target']),
         created: json['created'] as int,
@@ -42,10 +44,15 @@ class ImportHistoryEntry {
       );
 }
 
-class SettingsService {
+class SettingsService implements AiConfigStore {
+  SettingsService({Future<File> Function()? settingsFileProvider})
+      : _settingsFileProvider = settingsFileProvider;
+
   static const _maxHistory = 3;
+  final Future<File> Function()? _settingsFileProvider;
 
   Future<File> _settingsFile() async {
+    if (_settingsFileProvider != null) return _settingsFileProvider();
     final dir = await getApplicationDocumentsDirectory();
     return File(p.join(dir.path, 'singlist_settings.json'));
   }
@@ -100,6 +107,20 @@ class SettingsService {
     final history = await loadImportHistoryAsync();
     final updated = [entry, ...history].take(_maxHistory).toList();
     data['importHistory'] = updated.map((e) => e.toJson()).toList();
+    await _save(data);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> loadAiConfig() async {
+    final data = await _load();
+    final value = data['aiService'];
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
+
+  @override
+  Future<void> saveAiConfig(Map<String, dynamic> config) async {
+    final data = await _load();
+    data['aiService'] = config;
     await _save(data);
   }
 }
