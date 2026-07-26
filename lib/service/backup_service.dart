@@ -19,19 +19,28 @@ class BackupService {
 
   Future<String> exportBackup() async {
     final songs = await db.songDao.fetchAllSortedByNorm();
+    final lyrics = await db.lyricsDao.fetchAll();
+    final lyricsBySongId = {for (final item in lyrics) item.songId: item};
     final tags = await db.tagDao.watchAll().first;
-    final playlists = await db.playlistDao.watchByType(PlaylistType.normal).first;
+    final playlists =
+        await db.playlistDao.watchByType(PlaylistType.normal).first;
     final queues = await db.playlistDao.watchByType(PlaylistType.kQueue).first;
 
     final payload = <String, dynamic>{
-      'version': 1,
+      'version': 2,
       'exportedAt': DateTime.now().toIso8601String(),
-      'songs': songs
-          .map((s) => {
-                'title': s.title,
-                'artist': s.artist,
-              })
-          .toList(),
+      'songs': songs.map((s) {
+        final songLyrics = lyricsBySongId[s.id];
+        return <String, dynamic>{
+          'title': s.title,
+          'artist': s.artist,
+          if (songLyrics != null)
+            'lyrics': {
+              'japanese': songLyrics.japaneseText,
+              'chineseTranslation': songLyrics.chineseTranslation,
+            },
+        };
+      }).toList(),
       'tags': tags.map((t) => t.name).toList(),
       'playlists': [
         for (final pl in playlists)
@@ -57,17 +66,38 @@ class BackupService {
 
   Future<void> restoreFromFile(String path) async {
     final raw = await File(path).readAsString();
+    await restoreFromJsonString(raw);
+  }
+
+  Future<void> restoreFromJsonString(String raw) async {
     final data = jsonDecode(raw) as Map<String, dynamic>;
     final songList = data['songs'] as List<dynamic>? ?? [];
     for (final item in songList) {
       final map = item as Map<String, dynamic>;
-      await songRepo.addSong(map['title'] as String, map['artist'] as String);
+      final songId = await songRepo.upsertByTitleArtist(
+        map['title'] as String,
+        map['artist'] as String,
+      );
+      final lyrics = map['lyrics'];
+      if (lyrics is Map<String, dynamic>) {
+        final japanese = lyrics['japanese'];
+        if (japanese is String) {
+          await db.lyricsDao.save(
+            songId: songId,
+            japanese: japanese,
+            translation: lyrics['chineseTranslation'] is String
+                ? lyrics['chineseTranslation'] as String
+                : '',
+          );
+        }
+      }
     }
   }
 
   Future<File> writeBackupToDocuments() async {
     final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'singlist_backup_${DateTime.now().millisecondsSinceEpoch}.json'));
+    final file = File(p.join(dir.path,
+        'singlist_backup_${DateTime.now().millisecondsSinceEpoch}.json'));
     await file.writeAsString(await exportBackup());
     return file;
   }

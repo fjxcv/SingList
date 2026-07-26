@@ -20,28 +20,47 @@ class TagCountRow {
 }
 
 @DriftDatabase(
-  tables: [Songs, Tags, SongTags, Playlists, PlaylistSongs, QueueItems],
-  daos: [SongDao, TagDao, SongTagDao, PlaylistDao, QueueDao],
+  tables: [
+    Songs,
+    Tags,
+    SongTags,
+    Playlists,
+    PlaylistSongs,
+    QueueItems,
+    SongLyrics,
+  ],
+  daos: [SongDao, TagDao, SongTagDao, PlaylistDao, QueueDao, LyricsDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor e) : super(e);
-
-  SongDao get songDao => SongDao(this);
-  TagDao get tagDao => TagDao(this);
-  SongTagDao get songTagDao => SongTagDao(this);
-  PlaylistDao get playlistDao => PlaylistDao(this);
-  QueueDao get queueDao => QueueDao(this);
+  AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  SongDao get songDao => SongDao(this);
+  @override
+  TagDao get tagDao => TagDao(this);
+  @override
+  SongTagDao get songTagDao => SongTagDao(this);
+  @override
+  PlaylistDao get playlistDao => PlaylistDao(this);
+  @override
+  QueueDao get queueDao => QueueDao(this);
+  @override
+  LyricsDao get lyricsDao => LyricsDao(this);
+
+  @override
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
-          for (final table in allTables) {
-            await m.drop(table);
-            await m.createTable(table);
+          // Version 2 only changed Drift-side defaults; its destructive
+          // migration is intentionally not repeated. Existing data is valid.
+          if (from < 3) {
+            await m.createTable(songLyrics);
           }
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
         },
       );
 
@@ -119,6 +138,20 @@ class QueueItems extends Table {
   IntColumn get position => integer().withDefault(const Constant(0))();
 }
 
+class SongLyrics extends Table {
+  IntColumn get songId => integer().references(
+        Songs,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
+  TextColumn get japaneseText => text()();
+  TextColumn get chineseTranslation => text().withDefault(const Constant(''))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {songId};
+}
+
 @DriftAccessor(tables: [Songs])
 class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   SongDao(super.db);
@@ -128,7 +161,8 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
     final artistNorm = normalizeArtist(artist);
     final existing = await (select(songs)
           ..where(
-            (tbl) => tbl.titleNorm.equals(titleNorm) &
+            (tbl) =>
+                tbl.titleNorm.equals(titleNorm) &
                 tbl.artistNorm.equals(artistNorm),
           ))
         .getSingleOrNull();
@@ -153,7 +187,8 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
     final artistNorm = normalizeArtist(artist);
     final existing = await (select(songs)
           ..where(
-            (tbl) => tbl.titleNorm.equals(titleNorm) &
+            (tbl) =>
+                tbl.titleNorm.equals(titleNorm) &
                 tbl.artistNorm.equals(artistNorm),
           ))
         .getSingleOrNull();
@@ -184,6 +219,7 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
 
   Future<void> deleteSong(int id) async {
     await transaction(() async {
+      await (delete(db.songLyrics)..where((t) => t.songId.equals(id))).go();
       await (delete(db.songTags)..where((t) => t.songId.equals(id))).go();
       await (delete(db.queueItems)..where((t) => t.songId.equals(id))).go();
       await (delete(db.playlistSongs)..where((t) => t.songId.equals(id))).go();
@@ -232,6 +268,44 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   }
 }
 
+@DriftAccessor(tables: [SongLyrics])
+class LyricsDao extends DatabaseAccessor<AppDatabase> with _$LyricsDaoMixin {
+  LyricsDao(super.db);
+
+  Stream<SongLyric?> watchForSong(int songId) {
+    return (select(songLyrics)..where((row) => row.songId.equals(songId)))
+        .watchSingleOrNull();
+  }
+
+  Future<SongLyric?> findForSong(int songId) {
+    return (select(songLyrics)..where((row) => row.songId.equals(songId)))
+        .getSingleOrNull();
+  }
+
+  Future<void> save({
+    required int songId,
+    required String japanese,
+    required String translation,
+  }) {
+    return into(songLyrics).insertOnConflictUpdate(
+      SongLyricsCompanion.insert(
+        songId: Value(songId),
+        japaneseText: japanese,
+        chineseTranslation: Value(translation),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> deleteForSong(int songId) async {
+    await (delete(songLyrics)..where((row) => row.songId.equals(songId))).go();
+  }
+
+  Future<List<SongLyric>> fetchAll() {
+    return select(songLyrics).get();
+  }
+}
+
 @DriftAccessor(tables: [Tags])
 class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
   TagDao(super.db);
@@ -245,7 +319,8 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
   }
 
   Future<Tag?> findByName(String name) {
-    return (select(tags)..where((tbl) => tbl.name.equals(name))).getSingleOrNull();
+    return (select(tags)..where((tbl) => tbl.name.equals(name)))
+        .getSingleOrNull();
   }
 
   Future<int> create(String name) {
@@ -279,7 +354,8 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
 class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
   SongTagDao(super.db);
 
-  Future<void> addTagsToSongs({required List<int> songIds, required List<int> tagIds}) async {
+  Future<void> addTagsToSongs(
+      {required List<int> songIds, required List<int> tagIds}) async {
     await batch((b) {
       b.insertAllOnConflictUpdate(
         songTags,
@@ -292,7 +368,8 @@ class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
     });
   }
 
-  Future<void> removeTagsFromSongs({required List<int> songIds, required List<int> tagIds}) async {
+  Future<void> removeTagsFromSongs(
+      {required List<int> songIds, required List<int> tagIds}) async {
     await batch((b) {
       for (final songId in songIds) {
         b.deleteWhere(
@@ -309,11 +386,14 @@ class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
     ]);
     query.where(db.songTags.tagId.equals(tagId));
     query.orderBy([OrderingTerm.asc(songs.title)]);
-    return query.watch().map((rows) => rows.map((r) => r.readTable(songs)).toList());
+    return query
+        .watch()
+        .map((rows) => rows.map((r) => r.readTable(songs)).toList());
   }
 
   Future<Set<int>> songIdsByTag(int tagId) async {
-    final rows = await (select(songTags)..where((t) => t.tagId.equals(tagId))).get();
+    final rows =
+        await (select(songTags)..where((t) => t.tagId.equals(tagId))).get();
     return rows.map((r) => r.songId).toSet();
   }
 
@@ -323,7 +403,9 @@ class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
     ]);
     query.where(songTags.songId.equals(songId));
     query.orderBy([OrderingTerm.asc(tags.name)]);
-    return query.watch().map((rows) => rows.map((r) => r.readTable(tags)).toList());
+    return query
+        .watch()
+        .map((rows) => rows.map((r) => r.readTable(tags)).toList());
   }
 
   Stream<List<TagCountRow>> watchTagsWithCount() {
@@ -355,7 +437,8 @@ class SongTagDao extends DatabaseAccessor<AppDatabase> with _$SongTagDaoMixin {
 }
 
 @DriftAccessor(tables: [Playlists, PlaylistSongs, Songs])
-class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin {
+class PlaylistDao extends DatabaseAccessor<AppDatabase>
+    with _$PlaylistDaoMixin {
   PlaylistDao(super.db);
 
   Stream<List<Playlist>> watchByType(PlaylistType type) {
@@ -366,19 +449,22 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
   }
 
   Future<int> createPlaylist(String name, PlaylistType type) {
-    return into(playlists).insert(PlaylistsCompanion.insert(name: name, type: type));
+    return into(playlists)
+        .insert(PlaylistsCompanion.insert(name: name, type: type));
   }
 
   Future<void> deletePlaylist(int id) async {
     await transaction(() async {
-      await (delete(db.playlistSongs)..where((t) => t.playlistId.equals(id))).go();
+      await (delete(db.playlistSongs)..where((t) => t.playlistId.equals(id)))
+          .go();
       await (delete(db.queueItems)..where((t) => t.playlistId.equals(id))).go();
       await (delete(playlists)..where((t) => t.id.equals(id))).go();
     });
   }
 
   Future<Playlist?> findById(int id) {
-    return (select(playlists)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+    return (select(playlists)..where((tbl) => tbl.id.equals(id)))
+        .getSingleOrNull();
   }
 
   Future<void> renamePlaylist(int id, String name) {
@@ -393,7 +479,9 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
     ]);
     query.where(playlistSongs.playlistId.equals(playlistId));
     query.orderBy([OrderingTerm.asc(playlistSongs.position)]);
-    return query.watch().map((rows) => rows.map((r) => r.readTable(songs)).toList());
+    return query
+        .watch()
+        .map((rows) => rows.map((r) => r.readTable(songs)).toList());
   }
 
   Future<void> addSongsToPlaylist(int playlistId, List<int> songIds) async {
@@ -418,10 +506,12 @@ class PlaylistDao extends DatabaseAccessor<AppDatabase> with _$PlaylistDaoMixin 
     });
   }
 
-  Future<void> removeSongsFromPlaylist(int playlistId, List<int> songIds) async {
+  Future<void> removeSongsFromPlaylist(
+      int playlistId, List<int> songIds) async {
     await transaction(() async {
       await (delete(playlistSongs)
-            ..where((tbl) => tbl.playlistId.equals(playlistId) & tbl.songId.isIn(songIds)))
+            ..where((tbl) =>
+                tbl.playlistId.equals(playlistId) & tbl.songId.isIn(songIds)))
           .go();
       final remaining = await (select(playlistSongs)
             ..where((tbl) => tbl.playlistId.equals(playlistId))
@@ -503,6 +593,7 @@ class QueueDao extends DatabaseAccessor<AppDatabase> with _$QueueDaoMixin {
   }
 
   Future<void> clearQueue(int playlistId) async {
-    await (delete(queueItems)..where((t) => t.playlistId.equals(playlistId))).go();
+    await (delete(queueItems)..where((t) => t.playlistId.equals(playlistId)))
+        .go();
   }
 }

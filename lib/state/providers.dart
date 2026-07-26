@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/db/app_database.dart';
+import '../lyrics/lyrics_repository.dart';
 import '../repository/playlist_repository.dart';
 import '../repository/song_repository.dart';
 import '../repository/tag_repository.dart';
@@ -10,11 +11,17 @@ import '../service/import_service.dart';
 import '../service/kqueue_text_service.dart';
 import '../service/settings_service.dart';
 
-final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError());
+final databaseProvider =
+    Provider<AppDatabase>((ref) => throw UnimplementedError());
 
-final songRepoProvider = Provider((ref) => SongRepository(ref.watch(databaseProvider)));
-final tagRepoProvider = Provider((ref) => TagRepository(ref.watch(databaseProvider)));
-final playlistRepoProvider = Provider((ref) => PlaylistRepository(ref.watch(databaseProvider)));
+final songRepoProvider =
+    Provider((ref) => SongRepository(ref.watch(databaseProvider)));
+final lyricsRepoProvider =
+    Provider((ref) => LyricsRepository(ref.watch(databaseProvider)));
+final tagRepoProvider =
+    Provider((ref) => TagRepository(ref.watch(databaseProvider)));
+final playlistRepoProvider =
+    Provider((ref) => PlaylistRepository(ref.watch(databaseProvider)));
 final kqueueTextServiceProvider = Provider(
   (ref) => KQueueTextService(
     ref.watch(songRepoProvider),
@@ -22,7 +29,8 @@ final kqueueTextServiceProvider = Provider(
   ),
 );
 final settingsServiceProvider = Provider((ref) => SettingsService());
-final importServiceProvider = Provider((ref) => ImportService(ref.watch(databaseProvider)));
+final importServiceProvider =
+    Provider((ref) => ImportService(ref.watch(databaseProvider)));
 final backupServiceProvider = Provider(
   (ref) => BackupService(
     ref.watch(databaseProvider),
@@ -32,7 +40,8 @@ final backupServiceProvider = Provider(
   ),
 );
 final duplicateMergeServiceProvider = Provider(
-  (ref) => DuplicateMergeService(ref.watch(databaseProvider), ref.watch(songRepoProvider)),
+  (ref) => DuplicateMergeService(
+      ref.watch(databaseProvider), ref.watch(songRepoProvider)),
 );
 
 final songsProvider = StreamProvider.autoDispose((ref) {
