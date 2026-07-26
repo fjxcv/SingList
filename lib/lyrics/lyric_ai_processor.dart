@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../ai/ai_exception.dart';
 import '../ai/ai_provider_config.dart';
 import '../ai/openai_compatible_client.dart';
+import 'ai_furigana_normalizer.dart';
 import 'furigana_parser.dart';
 import 'lyric_ai_prompt.dart';
 import 'lyric_processing_result.dart';
@@ -100,11 +101,11 @@ class LyricAiProcessor {
       }
       final index = value['index'];
       final original = value['original'];
-      final display = value['display'];
+      final rawDisplay = value['display'];
       final translation = value['translation'];
       if (index is! int ||
           original is! String ||
-          display is! String ||
+          rawDisplay is! String ||
           translation is! String) {
         throw const AiException(
           AiErrorKind.invalidResponse,
@@ -123,6 +124,9 @@ class LyricAiProcessor {
           'AI 修改了第 ${position + 1} 行原歌词，已拒绝结果',
         );
       }
+      final display = isJapanese
+          ? const AiFuriganaNormalizer().normalize(rawDisplay)
+          : rawDisplay;
       if (original.isNotEmpty && display.isEmpty) {
         throw AiException(
           AiErrorKind.invalidResponse,

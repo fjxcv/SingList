@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../ai/ai_config_repository.dart';
 import '../ai/openai_compatible_client.dart';
 import '../ai/secure_api_key_store.dart';
+import '../ai_playlist/ai_playlist_save_service.dart';
+import '../ai_playlist/ai_playlist_service.dart';
+import '../ai_playlist/song_catalog_service.dart';
 import '../data/db/app_database.dart';
 import '../lyrics/lyric_ai_processor.dart';
 import '../lyrics/lyric_search_service.dart';
@@ -46,6 +49,21 @@ final lyricAiProcessorProvider = Provider(
   (ref) => LyricAiProcessor(ref.watch(openAiCompatibleClientProvider)),
 );
 final lyricSearchServiceProvider = Provider((ref) => LyricSearchService());
+final songCatalogServiceProvider = Provider(
+  (ref) => SongCatalogService(ref.watch(databaseProvider)),
+);
+final aiPlaylistServiceProvider = Provider(
+  (ref) => AiPlaylistService(
+    client: ref.watch(openAiCompatibleClientProvider),
+    catalogService: ref.watch(songCatalogServiceProvider),
+  ),
+);
+final aiPlaylistSaveServiceProvider = Provider(
+  (ref) => AiPlaylistSaveService(
+    songRepository: ref.watch(songRepoProvider),
+    playlistRepository: ref.watch(playlistRepoProvider),
+  ),
+);
 final importServiceProvider =
     Provider((ref) => ImportService(ref.watch(databaseProvider)));
 final backupServiceProvider = Provider(

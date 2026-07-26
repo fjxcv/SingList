@@ -52,6 +52,46 @@ void main() {
     expect((smallTsuCenter.dy - rainCenter.dy).abs(), lessThan(2));
   });
 
+  testWidgets('centers every reading over only its matching kanji',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: FuriganaLyricsView(
+            japanese: '[雨|あめ]が[降|ふ]った [花|はな]は[散|ち]った',
+            translation: '下雨了，花凋谢了',
+            fontSize: 28,
+            showTranslation: true,
+          ),
+        ),
+      ),
+    );
+
+    for (final pair in <(String, String)>[
+      ('雨', 'あめ'),
+      ('降', 'ふ'),
+      ('花', 'はな'),
+      ('散', 'ち'),
+    ]) {
+      final kanjiRect = tester.getRect(find.text(pair.$1));
+      final readingRect = tester.getRect(find.text(pair.$2));
+
+      expect(readingRect.bottom, lessThanOrEqualTo(kanjiRect.top + 1));
+      expect(
+        (readingRect.center.dx - kanjiRect.center.dx).abs(),
+        lessThan(1),
+      );
+    }
+
+    final baseLineY = tester.getCenter(find.text('雨')).dy;
+    for (final text in <String>['降', '花', '散']) {
+      expect(
+        (tester.getCenter(find.text(text)).dy - baseLineY).abs(),
+        lessThan(2),
+      );
+    }
+  });
+
   testWidgets('can hide the Chinese translation', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
