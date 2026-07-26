@@ -1534,6 +1534,276 @@ class QueueItemsCompanion extends UpdateCompanion<QueueItem> {
   }
 }
 
+class $SongLyricsTable extends SongLyrics
+    with TableInfo<$SongLyricsTable, SongLyric> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SongLyricsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _songIdMeta = const VerificationMeta('songId');
+  @override
+  late final GeneratedColumn<int> songId = GeneratedColumn<int>(
+      'song_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES songs (id) ON DELETE CASCADE'));
+  static const VerificationMeta _japaneseTextMeta =
+      const VerificationMeta('japaneseText');
+  @override
+  late final GeneratedColumn<String> japaneseText = GeneratedColumn<String>(
+      'japanese_text', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _chineseTranslationMeta =
+      const VerificationMeta('chineseTranslation');
+  @override
+  late final GeneratedColumn<String> chineseTranslation =
+      GeneratedColumn<String>('chinese_translation', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(''));
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [songId, japaneseText, chineseTranslation, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'song_lyrics';
+  @override
+  VerificationContext validateIntegrity(Insertable<SongLyric> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('song_id')) {
+      context.handle(_songIdMeta,
+          songId.isAcceptableOrUnknown(data['song_id']!, _songIdMeta));
+    }
+    if (data.containsKey('japanese_text')) {
+      context.handle(
+          _japaneseTextMeta,
+          japaneseText.isAcceptableOrUnknown(
+              data['japanese_text']!, _japaneseTextMeta));
+    } else if (isInserting) {
+      context.missing(_japaneseTextMeta);
+    }
+    if (data.containsKey('chinese_translation')) {
+      context.handle(
+          _chineseTranslationMeta,
+          chineseTranslation.isAcceptableOrUnknown(
+              data['chinese_translation']!, _chineseTranslationMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {songId};
+  @override
+  SongLyric map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SongLyric(
+      songId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}song_id'])!,
+      japaneseText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}japanese_text'])!,
+      chineseTranslation: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}chinese_translation'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $SongLyricsTable createAlias(String alias) {
+    return $SongLyricsTable(attachedDatabase, alias);
+  }
+}
+
+class SongLyric extends DataClass implements Insertable<SongLyric> {
+  final int songId;
+  final String japaneseText;
+  final String chineseTranslation;
+  final DateTime updatedAt;
+  const SongLyric(
+      {required this.songId,
+      required this.japaneseText,
+      required this.chineseTranslation,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['song_id'] = Variable<int>(songId);
+    map['japanese_text'] = Variable<String>(japaneseText);
+    map['chinese_translation'] = Variable<String>(chineseTranslation);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SongLyricsCompanion toCompanion(bool nullToAbsent) {
+    return SongLyricsCompanion(
+      songId: Value(songId),
+      japaneseText: Value(japaneseText),
+      chineseTranslation: Value(chineseTranslation),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SongLyric.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SongLyric(
+      songId: serializer.fromJson<int>(json['songId']),
+      japaneseText: serializer.fromJson<String>(json['japaneseText']),
+      chineseTranslation:
+          serializer.fromJson<String>(json['chineseTranslation']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'songId': serializer.toJson<int>(songId),
+      'japaneseText': serializer.toJson<String>(japaneseText),
+      'chineseTranslation': serializer.toJson<String>(chineseTranslation),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SongLyric copyWith(
+          {int? songId,
+          String? japaneseText,
+          String? chineseTranslation,
+          DateTime? updatedAt}) =>
+      SongLyric(
+        songId: songId ?? this.songId,
+        japaneseText: japaneseText ?? this.japaneseText,
+        chineseTranslation: chineseTranslation ?? this.chineseTranslation,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  SongLyric copyWithCompanion(SongLyricsCompanion data) {
+    return SongLyric(
+      songId: data.songId.present ? data.songId.value : this.songId,
+      japaneseText: data.japaneseText.present
+          ? data.japaneseText.value
+          : this.japaneseText,
+      chineseTranslation: data.chineseTranslation.present
+          ? data.chineseTranslation.value
+          : this.chineseTranslation,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SongLyric(')
+          ..write('songId: $songId, ')
+          ..write('japaneseText: $japaneseText, ')
+          ..write('chineseTranslation: $chineseTranslation, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(songId, japaneseText, chineseTranslation, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SongLyric &&
+          other.songId == this.songId &&
+          other.japaneseText == this.japaneseText &&
+          other.chineseTranslation == this.chineseTranslation &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SongLyricsCompanion extends UpdateCompanion<SongLyric> {
+  final Value<int> songId;
+  final Value<String> japaneseText;
+  final Value<String> chineseTranslation;
+  final Value<DateTime> updatedAt;
+  const SongLyricsCompanion({
+    this.songId = const Value.absent(),
+    this.japaneseText = const Value.absent(),
+    this.chineseTranslation = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SongLyricsCompanion.insert({
+    this.songId = const Value.absent(),
+    required String japaneseText,
+    this.chineseTranslation = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : japaneseText = Value(japaneseText);
+  static Insertable<SongLyric> custom({
+    Expression<int>? songId,
+    Expression<String>? japaneseText,
+    Expression<String>? chineseTranslation,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (songId != null) 'song_id': songId,
+      if (japaneseText != null) 'japanese_text': japaneseText,
+      if (chineseTranslation != null) 'chinese_translation': chineseTranslation,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SongLyricsCompanion copyWith(
+      {Value<int>? songId,
+      Value<String>? japaneseText,
+      Value<String>? chineseTranslation,
+      Value<DateTime>? updatedAt}) {
+    return SongLyricsCompanion(
+      songId: songId ?? this.songId,
+      japaneseText: japaneseText ?? this.japaneseText,
+      chineseTranslation: chineseTranslation ?? this.chineseTranslation,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (songId.present) {
+      map['song_id'] = Variable<int>(songId.value);
+    }
+    if (japaneseText.present) {
+      map['japanese_text'] = Variable<String>(japaneseText.value);
+    }
+    if (chineseTranslation.present) {
+      map['chinese_translation'] = Variable<String>(chineseTranslation.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SongLyricsCompanion(')
+          ..write('songId: $songId, ')
+          ..write('japaneseText: $japaneseText, ')
+          ..write('chineseTranslation: $chineseTranslation, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1543,17 +1813,31 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlaylistsTable playlists = $PlaylistsTable(this);
   late final $PlaylistSongsTable playlistSongs = $PlaylistSongsTable(this);
   late final $QueueItemsTable queueItems = $QueueItemsTable(this);
+  late final $SongLyricsTable songLyrics = $SongLyricsTable(this);
   late final SongDao songDao = SongDao(this as AppDatabase);
   late final TagDao tagDao = TagDao(this as AppDatabase);
   late final SongTagDao songTagDao = SongTagDao(this as AppDatabase);
   late final PlaylistDao playlistDao = PlaylistDao(this as AppDatabase);
   late final QueueDao queueDao = QueueDao(this as AppDatabase);
+  late final LyricsDao lyricsDao = LyricsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [songs, tags, songTags, playlists, playlistSongs, queueItems];
+      [songs, tags, songTags, playlists, playlistSongs, queueItems, songLyrics];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('songs',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('song_lyrics', kind: UpdateKind.delete),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
@@ -1616,6 +1900,20 @@ final class $$SongsTableReferences
         .filter((f) => f.songId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_queueItemsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$SongLyricsTable, List<SongLyric>>
+      _songLyricsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.songLyrics,
+          aliasName: $_aliasNameGenerator(db.songs.id, db.songLyrics.songId));
+
+  $$SongLyricsTableProcessedTableManager get songLyricsRefs {
+    final manager = $$SongLyricsTableTableManager($_db, $_db.songLyrics)
+        .filter((f) => f.songId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_songLyricsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -1702,6 +2000,27 @@ class $$SongsTableFilterComposer extends Composer<_$AppDatabase, $SongsTable> {
             $$QueueItemsTableFilterComposer(
               $db: $db,
               $table: $db.queueItems,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> songLyricsRefs(
+      Expression<bool> Function($$SongLyricsTableFilterComposer f) f) {
+    final $$SongLyricsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.songLyrics,
+        getReferencedColumn: (t) => t.songId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SongLyricsTableFilterComposer(
+              $db: $db,
+              $table: $db.songLyrics,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -1828,6 +2147,27 @@ class $$SongsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> songLyricsRefs<T extends Object>(
+      Expression<T> Function($$SongLyricsTableAnnotationComposer a) f) {
+    final $$SongLyricsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.songLyrics,
+        getReferencedColumn: (t) => t.songId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SongLyricsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.songLyrics,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$SongsTableTableManager extends RootTableManager<
@@ -1842,7 +2182,10 @@ class $$SongsTableTableManager extends RootTableManager<
     (Song, $$SongsTableReferences),
     Song,
     PrefetchHooks Function(
-        {bool songTagsRefs, bool playlistSongsRefs, bool queueItemsRefs})> {
+        {bool songTagsRefs,
+        bool playlistSongsRefs,
+        bool queueItemsRefs,
+        bool songLyricsRefs})> {
   $$SongsTableTableManager(_$AppDatabase db, $SongsTable table)
       : super(TableManagerState(
           db: db,
@@ -1892,13 +2235,15 @@ class $$SongsTableTableManager extends RootTableManager<
           prefetchHooksCallback: (
               {songTagsRefs = false,
               playlistSongsRefs = false,
-              queueItemsRefs = false}) {
+              queueItemsRefs = false,
+              songLyricsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (songTagsRefs) db.songTags,
                 if (playlistSongsRefs) db.playlistSongs,
-                if (queueItemsRefs) db.queueItems
+                if (queueItemsRefs) db.queueItems,
+                if (songLyricsRefs) db.songLyrics
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -1937,6 +2282,18 @@ class $$SongsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.songId == item.id),
+                        typedResults: items),
+                  if (songLyricsRefs)
+                    await $_getPrefetchedData<Song, $SongsTable, SongLyric>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SongsTableReferences._songLyricsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SongsTableReferences(db, table, p0)
+                                .songLyricsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.songId == item.id),
                         typedResults: items)
                 ];
               },
@@ -1957,7 +2314,10 @@ typedef $$SongsTableProcessedTableManager = ProcessedTableManager<
     (Song, $$SongsTableReferences),
     Song,
     PrefetchHooks Function(
-        {bool songTagsRefs, bool playlistSongsRefs, bool queueItemsRefs})>;
+        {bool songTagsRefs,
+        bool playlistSongsRefs,
+        bool queueItemsRefs,
+        bool songLyricsRefs})>;
 typedef $$TagsTableCreateCompanionBuilder = TagsCompanion Function({
   Value<int> id,
   required String name,
@@ -3431,6 +3791,260 @@ typedef $$QueueItemsTableProcessedTableManager = ProcessedTableManager<
     (QueueItem, $$QueueItemsTableReferences),
     QueueItem,
     PrefetchHooks Function({bool playlistId, bool songId})>;
+typedef $$SongLyricsTableCreateCompanionBuilder = SongLyricsCompanion Function({
+  Value<int> songId,
+  required String japaneseText,
+  Value<String> chineseTranslation,
+  Value<DateTime> updatedAt,
+});
+typedef $$SongLyricsTableUpdateCompanionBuilder = SongLyricsCompanion Function({
+  Value<int> songId,
+  Value<String> japaneseText,
+  Value<String> chineseTranslation,
+  Value<DateTime> updatedAt,
+});
+
+final class $$SongLyricsTableReferences
+    extends BaseReferences<_$AppDatabase, $SongLyricsTable, SongLyric> {
+  $$SongLyricsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SongsTable _songIdTable(_$AppDatabase db) => db.songs
+      .createAlias($_aliasNameGenerator(db.songLyrics.songId, db.songs.id));
+
+  $$SongsTableProcessedTableManager get songId {
+    final $_column = $_itemColumn<int>('song_id')!;
+
+    final manager = $$SongsTableTableManager($_db, $_db.songs)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_songIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$SongLyricsTableFilterComposer
+    extends Composer<_$AppDatabase, $SongLyricsTable> {
+  $$SongLyricsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get japaneseText => $composableBuilder(
+      column: $table.japaneseText, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get chineseTranslation => $composableBuilder(
+      column: $table.chineseTranslation,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$SongsTableFilterComposer get songId {
+    final $$SongsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.songId,
+        referencedTable: $db.songs,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SongsTableFilterComposer(
+              $db: $db,
+              $table: $db.songs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SongLyricsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SongLyricsTable> {
+  $$SongLyricsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get japaneseText => $composableBuilder(
+      column: $table.japaneseText,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get chineseTranslation => $composableBuilder(
+      column: $table.chineseTranslation,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$SongsTableOrderingComposer get songId {
+    final $$SongsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.songId,
+        referencedTable: $db.songs,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SongsTableOrderingComposer(
+              $db: $db,
+              $table: $db.songs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SongLyricsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SongLyricsTable> {
+  $$SongLyricsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get japaneseText => $composableBuilder(
+      column: $table.japaneseText, builder: (column) => column);
+
+  GeneratedColumn<String> get chineseTranslation => $composableBuilder(
+      column: $table.chineseTranslation, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$SongsTableAnnotationComposer get songId {
+    final $$SongsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.songId,
+        referencedTable: $db.songs,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SongsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.songs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SongLyricsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SongLyricsTable,
+    SongLyric,
+    $$SongLyricsTableFilterComposer,
+    $$SongLyricsTableOrderingComposer,
+    $$SongLyricsTableAnnotationComposer,
+    $$SongLyricsTableCreateCompanionBuilder,
+    $$SongLyricsTableUpdateCompanionBuilder,
+    (SongLyric, $$SongLyricsTableReferences),
+    SongLyric,
+    PrefetchHooks Function({bool songId})> {
+  $$SongLyricsTableTableManager(_$AppDatabase db, $SongLyricsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SongLyricsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SongLyricsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SongLyricsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> songId = const Value.absent(),
+            Value<String> japaneseText = const Value.absent(),
+            Value<String> chineseTranslation = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              SongLyricsCompanion(
+            songId: songId,
+            japaneseText: japaneseText,
+            chineseTranslation: chineseTranslation,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> songId = const Value.absent(),
+            required String japaneseText,
+            Value<String> chineseTranslation = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              SongLyricsCompanion.insert(
+            songId: songId,
+            japaneseText: japaneseText,
+            chineseTranslation: chineseTranslation,
+            updatedAt: updatedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$SongLyricsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({songId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (songId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.songId,
+                    referencedTable:
+                        $$SongLyricsTableReferences._songIdTable(db),
+                    referencedColumn:
+                        $$SongLyricsTableReferences._songIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SongLyricsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SongLyricsTable,
+    SongLyric,
+    $$SongLyricsTableFilterComposer,
+    $$SongLyricsTableOrderingComposer,
+    $$SongLyricsTableAnnotationComposer,
+    $$SongLyricsTableCreateCompanionBuilder,
+    $$SongLyricsTableUpdateCompanionBuilder,
+    (SongLyric, $$SongLyricsTableReferences),
+    SongLyric,
+    PrefetchHooks Function({bool songId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3446,6 +4060,8 @@ class $AppDatabaseManager {
       $$PlaylistSongsTableTableManager(_db, _db.playlistSongs);
   $$QueueItemsTableTableManager get queueItems =>
       $$QueueItemsTableTableManager(_db, _db.queueItems);
+  $$SongLyricsTableTableManager get songLyrics =>
+      $$SongLyricsTableTableManager(_db, _db.songLyrics);
 }
 
 mixin _$SongDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -3468,4 +4084,8 @@ mixin _$QueueDaoMixin on DatabaseAccessor<AppDatabase> {
   $PlaylistsTable get playlists => attachedDatabase.playlists;
   $SongsTable get songs => attachedDatabase.songs;
   $QueueItemsTable get queueItems => attachedDatabase.queueItems;
+}
+mixin _$LyricsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SongsTable get songs => attachedDatabase.songs;
+  $SongLyricsTable get songLyrics => attachedDatabase.songLyrics;
 }
