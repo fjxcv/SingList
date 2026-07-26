@@ -46,6 +46,47 @@ void main() {
     expect(result.warnings, ['特殊读音请确认']);
   });
 
+  test('normalizes a slash separator returned by the AI', () {
+    final result = processor.parseAndValidate(
+      response([
+        line(0, '雨が降った', '[雨/あめ]が[降/ふ]った', '下雨了'),
+      ]),
+      originalLyrics: '雨が降った',
+      actualModel: 'model',
+    );
+
+    expect(result.displayText, '[雨|あめ]が[降|ふ]った');
+  });
+
+  test('normalizes full-width separators returned by the AI', () {
+    final result = processor.parseAndValidate(
+      response([
+        line(0, '花が散った', '[花｜はな]が[散／ち]った', '花凋谢了'),
+      ]),
+      originalLyrics: '花が散った',
+      actualModel: 'model',
+    );
+
+    expect(result.displayText, '[花|はな]が[散|ち]った');
+  });
+
+  test('does not rewrite an ambiguous slash inside brackets', () {
+    expect(
+      () => processor.parseAndValidate(
+        response([line(0, 'A/B', '[A/B]', 'A/B')]),
+        originalLyrics: 'A/B',
+        actualModel: 'model',
+      ),
+      throwsA(
+        isA<AiException>().having(
+          (error) => error.message,
+          'message',
+          contains('注音格式错误'),
+        ),
+      ),
+    );
+  });
+
   test('rejects a blank translation for a non-empty Japanese line', () {
     expect(
       () => processor.parseAndValidate(

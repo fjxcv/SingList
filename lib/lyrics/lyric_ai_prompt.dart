@@ -22,6 +22,10 @@ remove, merge, reorder, censor, or paraphrase lyric lines. Return JSON only:
 Every input line, including empty lines and repeated choruses, must have exactly
 one item with the same index and exact original text.
 For Japanese, display uses [漢字|ひらがな] only where kanji needs furigana.
+The separator MUST be the ASCII vertical bar "|" (U+007C). Never use slash
+"/", full-width slash "／", or full-width vertical bar "｜". Example:
+[雨|あめ]が[降|ふ]った. Before returning JSON, verify that every furigana
+marker contains exactly one ASCII "|" and has a closing bracket.
 Keep kana, katakana, Latin text, numbers and punctuation unchanged. Readings
 must be hiragana, never romaji. For every non-empty Japanese line, translation
 must contain a faithful, natural Simplified Chinese translation. Never leave a

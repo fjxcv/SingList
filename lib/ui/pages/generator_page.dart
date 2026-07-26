@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/db/app_database.dart';
 import '../../state/brush_generator_state.dart';
 import '../../state/providers.dart';
+import 'ai_playlist_chat_page.dart';
 import 'queue_page.dart';
 import 'random_queue_page.dart';
 import '../widgets/bottom_fab_action.dart';
@@ -29,11 +30,77 @@ class GeneratorPage extends StatelessWidget {
             ),
           ),
         ),
-        body: const TabBarView(
+        body: const Column(
           children: [
-            _BrushGeneratorTab(),
-            RandomQueuePage(),
+            _AiPlaylistEntryCard(),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _BrushGeneratorTab(),
+                  RandomQueuePage(),
+                ],
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AiPlaylistEntryCard extends ConsumerWidget {
+  const _AiPlaylistEntryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inBrushMode = ref.watch(
+      brushGeneratorProvider.select((state) => state.inBrushMode),
+    );
+    if (inBrushMode) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: Card(
+        color: scheme.primaryContainer,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Navigator.push<void>(
+            context,
+            MaterialPageRoute(builder: (_) => const AiPlaylistChatPage()),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, color: scheme.onPrimaryContainer),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI 帮我选歌',
+                        style: TextStyle(
+                          color: scheme.onPrimaryContainer,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '告诉我你的心情、场景或今天想唱的类型',
+                        style: TextStyle(color: scheme.onPrimaryContainer),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -52,13 +119,13 @@ class _BrushGeneratorTab extends ConsumerWidget {
 
     if (state.inBrushMode) {
       return _BrushBody(
-          state: state,
-          onFavorite: notifier.markFavorite,
-          onLike: notifier.markLike,
-          onSkip: notifier.skip,
-          onGoPrevious: notifier.goPrevious,
-          onFinish: () => _handleFinish(context, notifier),
-          onBack: () => _handleBack(context, notifier),
+        state: state,
+        onFavorite: notifier.markFavorite,
+        onLike: notifier.markLike,
+        onSkip: notifier.skip,
+        onGoPrevious: notifier.goPrevious,
+        onFinish: () => _handleFinish(context, notifier),
+        onBack: () => _handleBack(context, notifier),
       );
     }
 
@@ -78,17 +145,20 @@ class _BrushGeneratorTab extends ConsumerWidget {
                     ChoiceChip(
                       label: const Text('全部歌曲'),
                       selected: state.sourceType == BrushSourceType.all,
-                      onSelected: (_) => notifier.updateSourceType(BrushSourceType.all),
+                      onSelected: (_) =>
+                          notifier.updateSourceType(BrushSourceType.all),
                     ),
                     ChoiceChip(
                       label: const Text('按标签'),
                       selected: state.sourceType == BrushSourceType.tag,
-                      onSelected: (_) => notifier.updateSourceType(BrushSourceType.tag),
+                      onSelected: (_) =>
+                          notifier.updateSourceType(BrushSourceType.tag),
                     ),
                     ChoiceChip(
                       label: const Text('普通歌单'),
                       selected: state.sourceType == BrushSourceType.playlist,
-                      onSelected: (_) => notifier.updateSourceType(BrushSourceType.playlist),
+                      onSelected: (_) =>
+                          notifier.updateSourceType(BrushSourceType.playlist),
                     ),
                   ],
                 ),
@@ -98,7 +168,8 @@ class _BrushGeneratorTab extends ConsumerWidget {
                     value: state.selectedTagId,
                     decoration: const InputDecoration(labelText: '选择标签'),
                     items: tags
-                        .map((t) => DropdownMenuItem(value: t.id, child: Text(t.name)))
+                        .map((t) =>
+                            DropdownMenuItem(value: t.id, child: Text(t.name)))
                         .toList(),
                     onChanged: (v) => notifier.updateTag(v),
                   ),
@@ -107,7 +178,8 @@ class _BrushGeneratorTab extends ConsumerWidget {
                     value: state.selectedPlaylistId,
                     decoration: const InputDecoration(labelText: '选择普通歌单'),
                     items: playlists
-                        .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
+                        .map((p) =>
+                            DropdownMenuItem(value: p.id, child: Text(p.name)))
                         .toList(),
                     onChanged: (v) => notifier.updatePlaylist(v),
                   ),
@@ -128,7 +200,8 @@ class _BrushGeneratorTab extends ConsumerWidget {
                         decoration: const InputDecoration(
                           labelText: '数量',
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         ),
                         keyboardType: TextInputType.number,
                         onChanged: (v) {
@@ -142,10 +215,13 @@ class _BrushGeneratorTab extends ConsumerWidget {
                 if (state.error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(state.error!, style: const TextStyle(color: Colors.red)),
+                    child: Text(state.error!,
+                        style: const TextStyle(color: Colors.red)),
                   ),
                 const Spacer(),
-                const Center(child: Text('\u9009\u62e9\u6765\u6e90\u540e\u5f00\u59cb\u5237\u6b4c')),
+                const Center(
+                    child: Text(
+                        '\u9009\u62e9\u6765\u6e90\u540e\u5f00\u59cb\u5237\u6b4c')),
                 const SizedBox(height: 12),
               ],
             ),
@@ -156,8 +232,9 @@ class _BrushGeneratorTab extends ConsumerWidget {
             bottom: 12,
             child: Center(
               child: BottomFabAction(
-                onPressed:
-                    state.isLoading ? null : () => _handleStartBrush(context, notifier),
+                onPressed: state.isLoading
+                    ? null
+                    : () => _handleStartBrush(context, notifier),
                 icon: Icons.play_arrow,
                 label: '开始刷歌',
                 isLoading: state.isLoading,
@@ -181,9 +258,12 @@ class _BrushGeneratorTab extends ConsumerWidget {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('\u5f00\u55d4\u66f2\u6570\u91cf\u4e0d\u8db3'),
-            content: Text('\u9700\u8981 ${state.warmupCount} \u9996\uff0c\u5f53\u524d\u53ea\u6709 $count \u9996\u6b4c'),
+            content: Text(
+                '\u9700\u8981 ${state.warmupCount} \u9996\uff0c\u5f53\u524d\u53ea\u6709 $count \u9996\u6b4c'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('\u77e5\u9053\u4e86')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('\u77e5\u9053\u4e86')),
             ],
           ),
         );
@@ -201,7 +281,8 @@ class _BrushGeneratorTab extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('\u7ed3\u675f\u5237\u6b4c\u4f1a\u8bdd'),
-        content: const Text('\u662f\u5426\u4fdd\u5b58\u672c\u6b21\u5237\u7684\u6b4c\u66f2\u5e76\u751f\u6210 KQueue \u6b4c\u5355\uff1f'),
+        content: const Text(
+            '\u662f\u5426\u4fdd\u5b58\u672c\u6b21\u5237\u7684\u6b4c\u66f2\u5e76\u751f\u6210 KQueue \u6b4c\u5355\uff1f'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, _BrushBackAction.cancel),
@@ -231,7 +312,9 @@ class _BrushGeneratorTab extends ConsumerWidget {
         );
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('\u6682\u65e0\u53ef\u4fdd\u5b58\u7684\u6b4c\u66f2')),
+          const SnackBar(
+              content:
+                  Text('\u6682\u65e0\u53ef\u4fdd\u5b58\u7684\u6b4c\u66f2')),
         );
       }
     }
@@ -248,7 +331,8 @@ class _BrushGeneratorTab extends ConsumerWidget {
       warmups = [...plan.forced];
       var remaining = plan.requiredCount - warmups.length;
       if (remaining > 0 && plan.liked.isNotEmpty) {
-        final likedSelected = notifier.pickRandomLikedWarmups(plan.liked, remaining);
+        final likedSelected =
+            notifier.pickRandomLikedWarmups(plan.liked, remaining);
         warmups.addAll(likedSelected);
         remaining = plan.requiredCount - warmups.length;
       }
@@ -260,9 +344,11 @@ class _BrushGeneratorTab extends ConsumerWidget {
         );
         if (wantMore == true) {
           final candidates = notifier.state.warmupSongs
-              .where((song) => warmups.every((selected) => selected.id != song.id))
+              .where(
+                  (song) => warmups.every((selected) => selected.id != song.id))
               .toList();
-          final extras = await _selectExtraWarmups(context, candidates, remaining);
+          final extras =
+              await _selectExtraWarmups(context, candidates, remaining);
           if (extras != null) {
             warmups.addAll(extras);
           }
@@ -296,11 +382,18 @@ class _BrushGeneratorTab extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('\u5f00\u55d4\u66f2\u6570\u91cf\u4e0d\u8db3'),
-        content: Text('\u5df2\u9009 $selectedNames\n\u8fd8\u5dee $missing \u9996\uff0c\u662f\u5426\u4ece\u5f00\u55d4\u6807\u7b7e\u4e2d\u8865\u9009\uff1f'),
+        content: Text(
+            '\u5df2\u9009 $selectedNames\n\u8fd8\u5dee $missing \u9996\uff0c\u662f\u5426\u4ece\u5f00\u55d4\u6807\u7b7e\u4e2d\u8865\u9009\uff1f'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('\u53d6\u6d88')),
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('\u5426')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('\u662f')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('\u53d6\u6d88')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('\u5426')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('\u662f')),
         ],
       ),
     );
@@ -316,9 +409,12 @@ class _BrushGeneratorTab extends ConsumerWidget {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('\u6682\u65e0\u53ef\u8865\u9009\u6b4c\u66f2'),
-          content: const Text('\u5f00\u55d4\u6807\u7b7e\u91cc\u6ca1\u6709\u66f4\u591a\u6b4c\u66f2\u53ef\u8865\u9009'),
+          content: const Text(
+              '\u5f00\u55d4\u6807\u7b7e\u91cc\u6ca1\u6709\u66f4\u591a\u6b4c\u66f2\u53ef\u8865\u9009'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('\u77e5\u9053\u4e86')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('\u77e5\u9053\u4e86')),
           ],
         ),
       );
@@ -333,11 +429,14 @@ class _BrushGeneratorTab extends ConsumerWidget {
           final filtered = keyword.isEmpty
               ? candidates
               : candidates
-                  .where((s) => s.title.contains(keyword) || s.artist.contains(keyword))
+                  .where((s) =>
+                      s.title.contains(keyword) || s.artist.contains(keyword))
                   .toList();
-          final selectedSongs = candidates.where((s) => selectedIds.contains(s.id)).toList();
+          final selectedSongs =
+              candidates.where((s) => selectedIds.contains(s.id)).toList();
           return AlertDialog(
-            title: Text('\u8865\u9009\u5f00\u55d4\u66f2\u76ee ($needed \u9996)'),
+            title:
+                Text('\u8865\u9009\u5f00\u55d4\u66f2\u76ee ($needed \u9996)'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -354,7 +453,10 @@ class _BrushGeneratorTab extends ConsumerWidget {
                     width: double.maxFinite,
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceVariant
+                          .withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Wrap(
@@ -416,13 +518,17 @@ class _BrushGeneratorTab extends ConsumerWidget {
                 onConfirm: () {
                   if (selectedIds.length != needed) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text('\u9700\u8981\u8865\u9009 $needed \u9996\uff0c\u5f53\u524d\u5df2\u9009 ${selectedIds.length} \u9996')),
+                      SnackBar(
+                          content: Text(
+                              '\u9700\u8981\u8865\u9009 $needed \u9996\uff0c\u5f53\u524d\u5df2\u9009 ${selectedIds.length} \u9996')),
                     );
                     return;
                   }
                   Navigator.pop(
                     dialogContext,
-                    candidates.where((s) => selectedIds.contains(s.id)).toList(),
+                    candidates
+                        .where((s) => selectedIds.contains(s.id))
+                        .toList(),
                   );
                 },
               ),
@@ -480,7 +586,8 @@ class _BrushBody extends StatelessWidget {
       );
     }
     return const Center(
-      child: Text('\u9009\u62e9\u6765\u6e90\u540e\u5f00\u59cb\u5237\u6b4c', style: TextStyle(color: AppColors.secondaryLabel)),
+      child: Text('\u9009\u62e9\u6765\u6e90\u540e\u5f00\u59cb\u5237\u6b4c',
+          style: TextStyle(color: AppColors.secondaryLabel)),
     );
   }
 }
@@ -524,7 +631,8 @@ class _SongCard extends StatelessWidget {
                   children: [
                     Text(
                       progressText,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     ClipRRect(
@@ -532,7 +640,8 @@ class _SongCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: state.progressValue,
                         minHeight: 4,
-                        backgroundColor: AppColors.separator.withValues(alpha: 0.4),
+                        backgroundColor:
+                            AppColors.separator.withValues(alpha: 0.4),
                       ),
                     ),
                   ],

@@ -137,11 +137,14 @@ class _RubyText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
+      // Keep each ruby group only as wide as its own text. Otherwise a Column
+      // can expand to the Wrap's full width and center the kanji on a new line.
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
                 height: fontSize * 0.5,

@@ -91,27 +91,35 @@ class OpenAiCompatibleClient {
     };
 
     try {
-      final request = _httpClient
-          .post(
-            chatCompletionsUri(config.baseUrl),
-            headers: {
-              'Authorization': 'Bearer ${apiKey.trim()}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode(body),
-          )
-          .timeout(Duration(seconds: config.timeoutSeconds));
-      final response = cancellationToken == null
-          ? await request
-          : await Future.any([
-              request,
-              cancellationToken.whenCancelled.then<http.Response>(
-                (_) => throw const AiException(
-                  AiErrorKind.cancelled,
-                  '操作已取消',
-                ),
+      final request = _httpClient.post(
+        chatCompletionsUri(config.baseUrl),
+        headers: {
+          'Authorization': 'Bearer ${apiKey.trim()}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+      final timeout = Completer<http.Response>();
+      final timeoutTimer = Timer(
+        Duration(seconds: config.timeoutSeconds),
+        () => timeout.completeError(TimeoutException('AI request timed out')),
+      );
+      late final http.Response response;
+      try {
+        response = await Future.any([
+          request,
+          timeout.future,
+          if (cancellationToken != null)
+            cancellationToken.whenCancelled.then<http.Response>(
+              (_) => throw const AiException(
+                AiErrorKind.cancelled,
+                '操作已取消',
               ),
-            ]);
+            ),
+        ]);
+      } finally {
+        timeoutTimer.cancel();
+      }
       if (cancellationToken?.isCancelled == true) {
         throw const AiException(AiErrorKind.cancelled, '操作已取消');
       }

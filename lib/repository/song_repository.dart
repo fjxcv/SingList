@@ -33,11 +33,13 @@ class SongRepository {
     return db.songTagDao.songsByTag(tagId);
   }
 
-  Future<void> addTagsToSongs({required List<int> songIds, required List<int> tagIds}) {
+  Future<void> addTagsToSongs(
+      {required List<int> songIds, required List<int> tagIds}) {
     return db.songTagDao.addTagsToSongs(songIds: songIds, tagIds: tagIds);
   }
 
-  Future<void> removeTagsFromSongs({required List<int> songIds, required List<int> tagIds}) {
+  Future<void> removeTagsFromSongs(
+      {required List<int> songIds, required List<int> tagIds}) {
     return db.songTagDao.removeTagsFromSongs(songIds: songIds, tagIds: tagIds);
   }
 
@@ -47,5 +49,18 @@ class SongRepository {
 
   Future<List<Song>> fetchSongsByTagSorted(int tagId) {
     return db.songDao.fetchSongsByTagSorted(tagId);
+  }
+}
+
+extension AiSongRepositoryQueries on SongRepository {
+  Future<Song?> findById(int id) {
+    return (db.select(db.songs)..where((song) => song.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  Future<List<Song>> findByIds(Iterable<int> ids) {
+    final values = ids.toSet().toList();
+    if (values.isEmpty) return Future.value(const []);
+    return (db.select(db.songs)..where((song) => song.id.isIn(values))).get();
   }
 }

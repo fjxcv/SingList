@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:drift/drift.dart';
 
 import '../data/db/app_database.dart';
 
@@ -65,17 +66,93 @@ class PlaylistRepository {
 
   Future<Playlist> createQueueWithSongs(List<int> songIds) async {
     final timestamp = DateFormat('yyyy-MM-dd/HH:mm:ss').format(DateTime.now());
-    final queueId = await create(
-      timestamp,
-      PlaylistType.kQueue,
-    );
-    for (var i = 0; i < songIds.length; i++) {
-      await enqueue(queueId, songIds[i], i);
-    }
-    final playlist = await findById(queueId);
-    if (playlist == null) {
-      throw Exception('Failed to create queue playlist');
-    }
-    return playlist;
+    return AiPlaylistRepositoryOperations(this)
+        .createQueueWithSongsNamed(timestamp, songIds);
+  }
+}
+
+extension AiPlaylistRepositoryOperations on PlaylistRepository {
+  Future<List<Playlist>> fetchByType(PlaylistType type) {
+    return watchByType(type).first;
+  }
+
+  Future<Playlist> createNormalWithSongs(
+    String name,
+    List<int> songIds,
+  ) {
+    return db.transaction(() async {
+      final playlistId = await create(name, PlaylistType.normal);
+      final seen = <int>{};
+      var position = 0;
+      for (final songId in songIds) {
+        if (!seen.add(songId)) continue;
+        await db.into(db.playlistSongs).insert(
+              PlaylistSongsCompanion.insert(
+                playlistId: playlistId,
+                songId: songId,
+                position: Value(position++),
+              ),
+            );
+      }
+      final playlist = await findById(playlistId);
+      if (playlist == null) {
+        throw StateError('创建普通歌单失败');
+      }
+      return playlist;
+    });
+  }
+
+  Future<Playlist> createQueueWithSongsNamed(
+    String name,
+    List<int> songIds,
+  ) {
+    return db.transaction(() async {
+      final queueId = await create(name, PlaylistType.kQueue);
+      for (var index = 0; index < songIds.length; index++) {
+        await db.into(db.queueItems).insert(
+              QueueItemsCompanion.insert(
+                playlistId: queueId,
+                songId: songIds[index],
+                position: Value(index),
+              ),
+            );
+      }
+      final playlist = await findById(queueId);
+      if (playlist == null) {
+        throw StateError('创建 KQueue 失败');
+      }
+      return playlist;
+    });
+  }
+
+  Future<void> appendSongsToQueue(
+    int playlistId,
+    List<int> songIds,
+  ) {
+    return db.transaction(() async {
+      final playlist = await findById(playlistId);
+      if (playlist == null || playlist.type != PlaylistType.kQueue) {
+        throw StateError('目标 KQueue 不存在');
+      }
+      final existing = await (db.select(db.queueItems)
+            ..where((item) => item.playlistId.equals(playlistId))
+            ..orderBy([(item) => OrderingTerm.asc(item.position)]))
+          .get();
+      var position = existing.isEmpty
+          ? 0
+          : existing
+                  .map((item) => item.position)
+                  .reduce((a, b) => a > b ? a : b) +
+              1;
+      for (final songId in songIds) {
+        await db.into(db.queueItems).insert(
+              QueueItemsCompanion.insert(
+                playlistId: playlistId,
+                songId: songId,
+                position: Value(position++),
+              ),
+            );
+      }
+    });
   }
 }
