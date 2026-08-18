@@ -172,7 +172,7 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
               '手动添加歌词',
               style: TextStyle(color: AppColors.systemBlue),
             ),
-            subtitle: const Text('粘贴原始歌词，可选择 AI 整理或直接编辑'),
+            subtitle: const Text('可从 LRCLIB 查找，或直接进入编辑页面'),
             onTap: () => _manualLyrics(context),
           ),
         ] else ...[

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../lyrics/furigana_parser.dart';
 import '../../lyrics/lyrics_repository.dart';
+import '../widgets/line_number_text_field.dart';
 
 class LyricsEditPage extends StatefulWidget {
   const LyricsEditPage({
@@ -11,6 +12,10 @@ class LyricsEditPage extends StatefulWidget {
     required this.repository,
     this.initialJapanese = '',
     this.initialTranslation = '',
+    this.originalText,
+    this.sourceName,
+    this.sourceUrl,
+    this.versionLabel,
   });
 
   final int songId;
@@ -18,6 +23,10 @@ class LyricsEditPage extends StatefulWidget {
   final LyricsRepository repository;
   final String initialJapanese;
   final String initialTranslation;
+  final String? originalText;
+  final String? sourceName;
+  final String? sourceUrl;
+  final String? versionLabel;
 
   @override
   State<LyricsEditPage> createState() => _LyricsEditPageState();
@@ -26,6 +35,7 @@ class LyricsEditPage extends StatefulWidget {
 class _LyricsEditPageState extends State<LyricsEditPage> {
   late final TextEditingController _japaneseController;
   late final TextEditingController _translationController;
+  final FocusNode _japaneseFocusNode = FocusNode();
   String? _validationMessage;
   bool _saving = false;
 
@@ -41,6 +51,7 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
   void dispose() {
     _japaneseController.dispose();
     _translationController.dispose();
+    _japaneseFocusNode.dispose();
     super.dispose();
   }
 
@@ -53,6 +64,7 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
     final error = const FuriganaParser().validate(japanese);
     if (error != null) {
       setState(() => _validationMessage = error.toString());
+      _selectJapaneseLine(error.line);
       return;
     }
 
@@ -64,9 +76,28 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
       songId: widget.songId,
       japanese: japanese,
       translation: _translationController.text,
+      originalText: widget.originalText,
+      sourceName: widget.sourceName,
+      sourceUrl: widget.sourceUrl,
+      versionLabel: widget.versionLabel,
       wasManuallyEdited: true,
     );
     if (mounted) Navigator.pop(context, true);
+  }
+
+  void _selectJapaneseLine(int oneBasedLine) {
+    final lines = _japaneseController.text.split('\n');
+    if (oneBasedLine < 1 || oneBasedLine > lines.length) return;
+    var start = 0;
+    for (var index = 0; index < oneBasedLine - 1; index++) {
+      start += lines[index].length + 1;
+    }
+    final end = start + lines[oneBasedLine - 1].length;
+    _japaneseController.selection = TextSelection(
+      baseOffset: start,
+      extentOffset: end,
+    );
+    _japaneseFocusNode.requestFocus();
   }
 
   @override
@@ -114,28 +145,21 @@ class _LyricsEditPageState extends State<LyricsEditPage> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          LineNumberTextField(
             controller: _japaneseController,
+            focusNode: _japaneseFocusNode,
             minLines: 8,
-            maxLines: null,
-            decoration: InputDecoration(
-              labelText: '显示/注音歌词',
-              alignLabelWithHint: true,
-              errorText: _validationMessage,
-              border: const OutlineInputBorder(),
-            ),
+            maxLines: 20,
+            labelText: '显示/注音歌词',
+            errorText: _validationMessage,
           ),
           const SizedBox(height: 16),
-          TextField(
+          LineNumberTextField(
             controller: _translationController,
             minLines: 6,
-            maxLines: null,
-            decoration: const InputDecoration(
-              labelText: '中文翻译（可选）',
-              alignLabelWithHint: true,
-              helperText: '行数可以少于或多于日文歌词，空缺行会留空。',
-              border: OutlineInputBorder(),
-            ),
+            maxLines: 20,
+            labelText: '中文翻译（可选）',
+            helperText: '默认与日文逐行对应；空缺行会留空。',
           ),
         ],
       ),

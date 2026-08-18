@@ -4,15 +4,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/db/app_database.dart';
 import '../../lyrics/lyric_candidate.dart';
 import '../../lyrics/lyric_search_service.dart';
+import '../../lyrics/network_connectivity_service.dart';
 import '../../state/providers.dart';
 import 'ai_settings_page.dart';
+import 'lyrics_edit_page.dart';
 import 'lyrics_processing_page.dart';
-import 'manual_lyrics_import_page.dart';
+
+enum LyricsSearchResultAction {
+  processWithAi,
+  editDirectly,
+}
 
 class LyricsSearchPage extends ConsumerStatefulWidget {
-  const LyricsSearchPage({super.key, required this.song});
+  const LyricsSearchPage({
+    super.key,
+    required this.song,
+    this.resultAction = LyricsSearchResultAction.processWithAi,
+  });
 
   final Song song;
+  final LyricsSearchResultAction resultAction;
 
   @override
   ConsumerState<LyricsSearchPage> createState() => _LyricsSearchPageState();
@@ -23,6 +34,7 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
   late final TextEditingController _artistController;
   List<LyricCandidate> _candidates = [];
   bool _loading = false;
+  String _loadingMessage = '正在搜索歌词…';
   String? _error;
 
   @override
@@ -38,14 +50,28 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _loadingMessage =
+          widget.resultAction == LyricsSearchResultAction.processWithAi
+              ? '正在检查网络…'
+              : '正在搜索歌词…';
     });
     try {
+      if (widget.resultAction == LyricsSearchResultAction.processWithAi) {
+        await ref
+            .read(networkConnectivityServiceProvider)
+            .checkInternetAccess();
+        if (!mounted) return;
+        setState(() => _loadingMessage = '网络正常，正在连接歌词服务…');
+      }
       final result = await ref.read(lyricSearchServiceProvider).search(
             trackName: _titleController.text,
             artistName: _artistController.text,
           );
       if (!mounted) return;
       setState(() => _candidates = result);
+    } on NetworkConnectivityException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.message);
     } on LyricSearchException catch (error) {
       if (!mounted) return;
       setState(() => _error = error.message);
@@ -56,6 +82,31 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
 
   Future<void> _choose(LyricCandidate candidate) async {
     if (candidate.instrumental) return;
+    final version = [
+      if (candidate.albumName?.isNotEmpty == true) candidate.albumName!,
+      if (candidate.durationSeconds != null)
+        _durationLabel(candidate.durationSeconds!),
+    ].join(' · ');
+    if (widget.resultAction == LyricsSearchResultAction.editDirectly) {
+      final saved = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LyricsEditPage(
+            songId: widget.song.id,
+            songTitle: widget.song.title,
+            repository: ref.read(lyricsRepoProvider),
+            initialJapanese: candidate.lyrics,
+            originalText: candidate.lyrics,
+            sourceName: candidate.sourceName,
+            sourceUrl: candidate.sourceUrl,
+            versionLabel: version.isEmpty ? null : version,
+          ),
+        ),
+      );
+      if (saved == true && mounted) Navigator.pop(context, true);
+      return;
+    }
+
     final configRepository = ref.read(aiConfigRepositoryProvider);
     final config = await configRepository.loadConfig();
     final apiKey = await configRepository.readApiKey();
@@ -67,11 +118,6 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
       );
       return;
     }
-    final version = [
-      if (candidate.albumName?.isNotEmpty == true) candidate.albumName!,
-      if (candidate.durationSeconds != null)
-        _durationLabel(candidate.durationSeconds!),
-    ].join(' · ');
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -91,7 +137,11 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => ManualLyricsImportPage(song: widget.song),
+        builder: (_) => LyricsEditPage(
+          songId: widget.song.id,
+          songTitle: widget.song.title,
+          repository: ref.read(lyricsRepoProvider),
+        ),
       ),
     );
     if (saved == true && mounted) Navigator.pop(context, true);
@@ -112,7 +162,13 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('自动添加歌词')),
+      appBar: AppBar(
+        title: Text(
+          widget.resultAction == LyricsSearchResultAction.processWithAi
+              ? '自动添加歌词'
+              : '从 LRCLIB 查找',
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -148,7 +204,16 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 14),
+                        Text(_loadingMessage),
+                      ],
+                    ),
+                  )
                 : _buildResults(),
           ),
         ],
@@ -175,7 +240,7 @@ class _LyricsSearchPageState extends ConsumerState<LyricsSearchPage> {
             padding: const EdgeInsets.only(top: 8),
             child: OutlinedButton(
               onPressed: _manual,
-              child: const Text('都不正确，手动粘贴歌词'),
+              child: const Text('都不正确，直接进入编辑'),
             ),
           );
         }
@@ -243,7 +308,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 14),
             OutlinedButton(
               onPressed: onManual,
-              child: const Text('手动粘贴歌词'),
+              child: const Text('直接进入编辑'),
             ),
           ],
         ),

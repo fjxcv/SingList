@@ -4,6 +4,7 @@ enum AiErrorKind {
   endpoint,
   model,
   quota,
+  rateLimit,
   timeout,
   network,
   server,

@@ -216,10 +216,14 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 Slider(
                   value: _timeout,
                   min: 15,
-                  max: 180,
-                  divisions: 11,
+                  max: 600,
+                  divisions: 39,
                   label: '${_timeout.round()} 秒',
                   onChanged: (value) => setState(() => _timeout = value),
+                ),
+                Text(
+                  '歌词整理会根据歌词长度自动延长等待时间，最长 600 秒。',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
