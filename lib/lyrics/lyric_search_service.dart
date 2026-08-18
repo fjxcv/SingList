@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -57,8 +59,46 @@ class LyricSearchService {
       rethrow;
     } on FormatException {
       throw const LyricSearchException('LRCLIB 返回了无法解析的数据');
-    } catch (_) {
+    } on TimeoutException {
+      throw const LyricSearchException('连接 LRCLIB 超时，请检查网络或代理后重试');
+    } on SocketException {
+      throw const LyricSearchException('无法连接 LRCLIB，请检查网络、DNS 或代理');
+    } on http.ClientException {
       throw const LyricSearchException('无法连接 LRCLIB，请检查网络后重试');
+    }
+  }
+
+  Future<void> checkAvailability({
+    Duration timeout = const Duration(seconds: 6),
+  }) async {
+    try {
+      final response = await _httpClient.get(
+        Uri.parse(_baseUrl).replace(
+          queryParameters: const {'track_name': 'SingList connectivity check'},
+        ),
+        headers: const {
+          'User-Agent': 'SingList/0.1.6 (https://github.com/fjxcv/SingList)',
+          'Accept': 'application/json',
+        },
+      ).timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw LyricSearchException(
+          '歌词服务暂时不可用（HTTP ${response.statusCode}）',
+        );
+      }
+      if (jsonDecode(response.body) is! List) {
+        throw const LyricSearchException('歌词服务返回格式不正确');
+      }
+    } on LyricSearchException {
+      rethrow;
+    } on TimeoutException {
+      throw const LyricSearchException('歌词服务连接检查超时，请稍后重试');
+    } on SocketException {
+      throw const LyricSearchException('无法连接歌词服务，请检查网络、DNS 或代理');
+    } on http.ClientException {
+      throw const LyricSearchException('歌词服务网络请求失败，请稍后重试');
+    } on FormatException {
+      throw const LyricSearchException('歌词服务返回了无法解析的数据');
     }
   }
 

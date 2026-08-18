@@ -55,12 +55,25 @@ class OpenAiCompatibleClient {
     return uri.replace(pathSegments: segments, query: null, fragment: null);
   }
 
+  static Uri modelsUri(String baseUrl) {
+    final chatUri = chatCompletionsUri(baseUrl);
+    final segments = [...chatUri.pathSegments.where((part) => part.isNotEmpty)];
+    if (segments.length >= 2 &&
+        segments[segments.length - 2] == 'chat' &&
+        segments.last == 'completions') {
+      segments.removeRange(segments.length - 2, segments.length);
+    }
+    segments.add('models');
+    return chatUri.replace(pathSegments: segments);
+  }
+
   Future<AiChatResponse> complete({
     required AiProviderConfig config,
     required String apiKey,
     required List<Map<String, String>> messages,
     double temperature = 0.1,
     int? maxTokens,
+    int? timeoutSeconds,
     AiCancellationToken? cancellationToken,
     bool allowEmptyContent = false,
   }) async {
@@ -100,8 +113,9 @@ class OpenAiCompatibleClient {
         body: jsonEncode(body),
       );
       final timeout = Completer<http.Response>();
+      final effectiveTimeoutSeconds = timeoutSeconds ?? config.timeoutSeconds;
       final timeoutTimer = Timer(
-        Duration(seconds: config.timeoutSeconds),
+        Duration(seconds: effectiveTimeoutSeconds),
         () => timeout.completeError(TimeoutException('AI request timed out')),
       );
       late final http.Response response;
@@ -168,7 +182,12 @@ class OpenAiCompatibleClient {
         model: model is String ? model : config.model,
       );
     } on TimeoutException {
-      throw const AiException(AiErrorKind.timeout, '请求超时，请稍后重试');
+      final effectiveTimeoutSeconds = timeoutSeconds ?? config.timeoutSeconds;
+      throw AiException(
+        AiErrorKind.timeout,
+        '请求超过 $effectiveTimeoutSeconds 秒仍未完成。'
+        '长歌词或推理模型需要更久，可重试、缩短歌词，或改用更快的模型。',
+      );
     } on SocketException {
       throw const AiException(AiErrorKind.network, '无网络或无法连接到服务');
     } on http.ClientException {
@@ -216,6 +235,13 @@ class OpenAiCompatibleClient {
         statusCode: response.statusCode,
       );
     }
+    if (response.statusCode == 429) {
+      return const AiException(
+        AiErrorKind.rateLimit,
+        'AI 请求过于频繁，已触发速率限制，请稍后重试',
+        statusCode: 429,
+      );
+    }
     if (response.statusCode >= 500) {
       return AiException(
         AiErrorKind.server,
@@ -233,19 +259,91 @@ class OpenAiCompatibleClient {
   Future<AiChatResponse> testConnection({
     required AiProviderConfig config,
     required String apiKey,
-  }) {
-    return complete(
-      config: config,
-      apiKey: apiKey,
-      messages: const [
-        {'role': 'user', 'content': 'Reply only with OK.'},
-      ],
-      temperature: 0,
-      maxTokens: 256,
-      // 测试连接只验证凭证、地址、模型和响应结构。部分推理模型会把
-      // 较短请求的输出全部放入 reasoning_content，message.content 为空。
-      allowEmptyContent: true,
-    );
+    int timeoutSeconds = 8,
+    AiCancellationToken? cancellationToken,
+  }) async {
+    if (!config.enabled) {
+      throw const AiException(
+        AiErrorKind.invalidConfiguration,
+        'AI 服务尚未启用',
+      );
+    }
+    if (config.model.trim().isEmpty) {
+      throw const AiException(
+        AiErrorKind.invalidConfiguration,
+        '请填写模型名',
+      );
+    }
+    if (apiKey.trim().isEmpty) {
+      throw const AiException(
+        AiErrorKind.authentication,
+        '请先填写 API Key',
+      );
+    }
+
+    try {
+      final request = _httpClient.get(
+        modelsUri(config.baseUrl),
+        headers: {
+          'Authorization': 'Bearer ${apiKey.trim()}',
+          'Accept': 'application/json',
+        },
+      );
+      final response = await Future.any<http.Response>([
+        request,
+        Future<http.Response>.delayed(
+          Duration(seconds: timeoutSeconds),
+          () => throw TimeoutException('AI connection check timed out'),
+        ),
+        if (cancellationToken != null)
+          cancellationToken.whenCancelled.then<http.Response>(
+            (_) => throw const AiException(
+              AiErrorKind.cancelled,
+              '操作已取消',
+            ),
+          ),
+      ]);
+      if (cancellationToken?.isCancelled == true) {
+        throw const AiException(AiErrorKind.cancelled, '操作已取消');
+      }
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return AiChatResponse(content: '', model: config.model);
+      }
+      if (response.statusCode != 400 &&
+          response.statusCode != 404 &&
+          response.statusCode != 405) {
+        throw _httpError(response);
+      }
+
+      // 少数兼容服务没有 /models；只在端点明确不支持时退化为极小请求。
+      return complete(
+        config: config,
+        apiKey: apiKey,
+        messages: const [
+          {'role': 'user', 'content': 'Reply only with OK.'},
+        ],
+        temperature: 0,
+        maxTokens: 16,
+        timeoutSeconds: timeoutSeconds,
+        cancellationToken: cancellationToken,
+        allowEmptyContent: true,
+      );
+    } on TimeoutException {
+      throw AiException(
+        AiErrorKind.timeout,
+        'AI 服务连接检查超过 $timeoutSeconds 秒，请检查网络、代理或 API 地址',
+      );
+    } on SocketException {
+      throw const AiException(
+        AiErrorKind.network,
+        '无法连接 AI 服务，请检查网络、DNS、代理或 Base URL',
+      );
+    } on http.ClientException {
+      throw const AiException(
+        AiErrorKind.network,
+        'AI 服务网络请求失败，请检查网络或 API 地址',
+      );
+    }
   }
 
   static String _extractTextContent(dynamic content) {

@@ -10,6 +10,7 @@ import '../data/db/app_database.dart';
 import '../lyrics/lyric_ai_processor.dart';
 import '../lyrics/lyric_search_service.dart';
 import '../lyrics/lyrics_repository.dart';
+import '../lyrics/network_connectivity_service.dart';
 import '../repository/playlist_repository.dart';
 import '../repository/song_repository.dart';
 import '../repository/tag_repository.dart';
@@ -49,6 +50,8 @@ final lyricAiProcessorProvider = Provider(
   (ref) => LyricAiProcessor(ref.watch(openAiCompatibleClientProvider)),
 );
 final lyricSearchServiceProvider = Provider((ref) => LyricSearchService());
+final networkConnectivityServiceProvider =
+    Provider((ref) => NetworkConnectivityService());
 final songCatalogServiceProvider = Provider(
   (ref) => SongCatalogService(ref.watch(databaseProvider)),
 );

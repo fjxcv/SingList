@@ -35,6 +35,12 @@ void main() {
       ).toString(),
       'https://example.com/custom/chat/completions',
     );
+    expect(
+      OpenAiCompatibleClient.modelsUri(
+        'https://example.com/v1/chat/completions',
+      ).toString(),
+      'https://example.com/v1/models',
+    );
   });
 
   test('sends authorization, model and messages then parses content', () async {
@@ -145,21 +151,38 @@ void main() {
     );
   });
 
-  test('connection test allows reasoning-only response and uses 256 tokens',
-      () async {
+  test('connection test prefers the lightweight models endpoint', () async {
     late http.Request captured;
     final client = OpenAiCompatibleClient(
       httpClient: MockClient((request) async {
         captured = request;
+        return http.Response('{"data":[]}', 200);
+      }),
+    );
+
+    final response = await client.testConnection(
+      config: config(),
+      apiKey: 'key',
+    );
+
+    expect(captured.method, 'GET');
+    expect(captured.url.toString(), 'https://example.com/v1/models');
+    expect(response.content, isEmpty);
+    expect(response.model, 'test-model');
+  });
+
+  test('connection test falls back to a 16-token completion', () async {
+    final requests = <http.Request>[];
+    final client = OpenAiCompatibleClient(
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        if (request.method == 'GET') return http.Response('', 404);
         return http.Response(
           jsonEncode({
             'model': 'reasoning-model',
             'choices': [
               {
-                'message': {
-                  'content': null,
-                  'reasoning_content': 'The connection is working.',
-                },
+                'message': {'content': null},
                 'finish_reason': 'length',
               },
             ],
@@ -174,10 +197,27 @@ void main() {
       apiKey: 'key',
     );
 
-    final body = jsonDecode(captured.body) as Map<String, dynamic>;
-    expect(body['max_tokens'], 256);
-    expect(response.content, isEmpty);
+    expect(requests.map((request) => request.method), ['GET', 'POST']);
+    final body = jsonDecode(requests.last.body) as Map<String, dynamic>;
+    expect(body['max_tokens'], 16);
     expect(response.model, 'reasoning-model');
+  });
+
+  test('classifies generic HTTP 429 as rate limit', () async {
+    final client = OpenAiCompatibleClient(
+      httpClient: MockClient((_) async => http.Response('busy', 429)),
+    );
+
+    await expectLater(
+      client.complete(config: config(), apiKey: 'key', messages: const []),
+      throwsA(
+        isA<AiException>().having(
+          (error) => error.kind,
+          'kind',
+          AiErrorKind.rateLimit,
+        ),
+      ),
+    );
   });
 
   test('classifies non-2xx without leaking API key', () async {
@@ -238,6 +278,37 @@ void main() {
           'kind',
           AiErrorKind.invalidResponse,
         ),
+      ),
+    );
+  });
+
+  test('allows a request-specific timeout override', () async {
+    final client = OpenAiCompatibleClient(
+      httpClient: MockClient((_) async {
+        await Completer<void>().future;
+        return http.Response('', 200);
+      }),
+    );
+
+    await expectLater(
+      client.complete(
+        config: config(timeoutSeconds: 30),
+        apiKey: 'key',
+        messages: const [],
+        timeoutSeconds: 0,
+      ),
+      throwsA(
+        isA<AiException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              AiErrorKind.timeout,
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              contains('0 秒'),
+            ),
       ),
     );
   });

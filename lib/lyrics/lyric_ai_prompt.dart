@@ -18,9 +18,9 @@ class LyricAiPrompt {
         'content': '''
 You faithfully format user-provided song lyrics. Never search, invent, complete,
 remove, merge, reorder, censor, or paraphrase lyric lines. Return JSON only:
-{"language":"ja","lines":[{"index":0,"original":"","display":"","translation":""}],"warnings":[]}
+{"language":"ja","lines":[{"index":0,"display":"","translation":""}],"warnings":[]}
 Every input line, including empty lines and repeated choruses, must have exactly
-one item with the same index and exact original text.
+one item with the same index. Do not repeat the original text in the JSON.
 For Japanese, display uses [漢字|ひらがな] only where kanji needs furigana.
 The separator MUST be the ASCII vertical bar "|" (U+007C). Never use slash
 "/", full-width slash "／", or full-width vertical bar "｜". Example:

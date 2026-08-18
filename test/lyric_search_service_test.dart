@@ -113,4 +113,25 @@ void main() {
       throwsA(isA<LyricSearchException>()),
     );
   });
+
+  test('availability check validates status and JSON shape', () async {
+    final healthy = LyricSearchService(
+      httpClient: MockClient((_) async => http.Response('[]', 200)),
+    );
+    await expectLater(healthy.checkAvailability(), completes);
+
+    final unavailable = LyricSearchService(
+      httpClient: MockClient((_) async => http.Response('busy', 503)),
+    );
+    await expectLater(
+      unavailable.checkAvailability(),
+      throwsA(
+        isA<LyricSearchException>().having(
+          (error) => error.message,
+          'message',
+          contains('503'),
+        ),
+      ),
+    );
+  });
 }

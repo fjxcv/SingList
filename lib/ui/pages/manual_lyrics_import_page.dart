@@ -3,117 +3,72 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/db/app_database.dart';
 import '../../state/providers.dart';
-import 'ai_settings_page.dart';
 import 'lyrics_edit_page.dart';
-import 'lyrics_processing_page.dart';
+import 'lyrics_search_page.dart';
 
-class ManualLyricsImportPage extends ConsumerStatefulWidget {
+class ManualLyricsImportPage extends ConsumerWidget {
   const ManualLyricsImportPage({super.key, required this.song});
 
   final Song song;
 
-  @override
-  ConsumerState<ManualLyricsImportPage> createState() =>
-      _ManualLyricsImportPageState();
-}
-
-class _ManualLyricsImportPageState
-    extends ConsumerState<ManualLyricsImportPage> {
-  final _controller = TextEditingController();
-
-  Future<void> _useAi() async {
-    if (_controller.text.trim().isEmpty) {
-      _showMessage('请先粘贴原始歌词');
-      return;
-    }
-    final repository = ref.read(aiConfigRepositoryProvider);
-    final config = await repository.loadConfig();
-    final key = await repository.readApiKey();
-    if (!mounted) return;
-    if (!config.enabled || key == null || key.isEmpty) {
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(builder: (_) => const AiSettingsPage()),
-      );
-      return;
-    }
+  Future<void> _searchLrclib(BuildContext context) async {
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => LyricsProcessingPage(
-          song: widget.song,
-          rawLyrics: _controller.text,
-          sourceName: '手动粘贴',
+        builder: (_) => LyricsSearchPage(
+          song: song,
+          resultAction: LyricsSearchResultAction.editDirectly,
         ),
       ),
     );
-    if (saved == true && mounted) Navigator.pop(context, true);
+    if (saved == true && context.mounted) Navigator.pop(context, true);
   }
 
-  Future<void> _withoutAi() async {
-    if (_controller.text.trim().isEmpty) {
-      _showMessage('请先粘贴原始歌词');
-      return;
-    }
+  Future<void> _openEditor(BuildContext context, WidgetRef ref) async {
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => LyricsEditPage(
-          songId: widget.song.id,
-          songTitle: widget.song.title,
+          songId: song.id,
+          songTitle: song.title,
           repository: ref.read(lyricsRepoProvider),
-          initialJapanese: _controller.text,
         ),
       ),
     );
-    if (saved == true && mounted) Navigator.pop(context, true);
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    if (saved == true && context.mounted) Navigator.pop(context, true);
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('手动添加歌词')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           Text(
-            '${widget.song.title} · ${widget.song.artist}',
+            '${song.title} · ${song.artist}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            minLines: 14,
-            maxLines: null,
-            decoration: const InputDecoration(
-              labelText: '原始歌词',
-              hintText: '在这里粘贴完整歌词，空行和重复副歌会保留',
-              alignLabelWithHint: true,
-              border: OutlineInputBorder(),
+          const Text('选择歌词来源。两种方式都会进入编辑页面，确认保存前不会修改现有歌词。'),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.search),
+              title: const Text('从 LRCLIB 查找'),
+              subtitle: const Text('选择一个歌词版本，然后进入编辑页面'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _searchLrclib(context),
             ),
           ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _useAi,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('AI 整理'),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: _withoutAi,
-            child: const Text('不使用 AI，直接编辑'),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('直接进入编辑'),
+              subtitle: const Text('不查找歌词，在空白编辑页中粘贴或输入'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _openEditor(context, ref),
+            ),
           ),
         ],
       ),
